@@ -1,0 +1,26 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# 导出构建产物（防止打包文件污染仓库）
+build/
+bin/
+dist/
+*.pck
+*.apk
+*.aab
+*.exe
+
+# 导出预设配置（若包含签名密钥等私密信息，取消下行注释）
+# export_presets.cfg
+
+# 外部编辑器与系统缓存
+.vscode/
+.idea/
+*.tmp
+Thumbs.db
+.DS_Store
+
+# Mono / C# 编译产物（仅在使用 C# 时需要）
+obj/
+*.csproj.user
