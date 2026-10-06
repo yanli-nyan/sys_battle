@@ -1,4 +1,91 @@
 res://
+├── .godot/                                 # 引擎本地缓存（Git 忽略）
+├── .gitignore
+├── .gitattributes
+├── project.godot
+│
+├── raw_assets/                             # 原始设计源文件（不参与游戏打包）
+│   ├── .gdignore                           # 屏蔽引擎导入扫描
+│   ├── psd/                                # 角色、场景概念设计 PSD
+│   └── audio_source/                       # 未压缩的音效工程文件
+│
+├── assets/                                 # 游戏实际引用的运行时轻量文件
+│   ├── textures/
+│   │   ├── characters/                     # 角色贴图帧 / 静态 Sprite (32x32)
+│   │   ├── environment/                    # 地图瓦片贴图 (tileset_32x32.png)
+│   │   ├── projectiles/                    # 子弹、飞镖、魔法球贴图
+│   │   └── ui/                             # 血条、按键、技能槽图标
+│   ├── audio/
+│   │   ├── sfx/                            # 受击、挥砍、爆炸等音效 (.wav)
+│   │   └── bgm/                            # 战斗背景音乐 (.ogg)
+│   └── fonts/                              # 像素字体 (.ttf)
+│
+├── resources/                              # 运行时静态配置数据 (.tres)
+│   ├── characters/                         # 各角色具体属性实例
+│   │   ├── warrior.tres
+│   │   ├── assassin.tres
+│   │   └── grunt_ai.tres
+│   ├── skills/                             # 具体的技能配置实例
+│   │   ├── melee_slash.tres                # 基础近战
+│   │   ├── shadow_dash.tres                # 刺客冲刺
+│   │   └── magic_missile.tres              # 远程飞行弹
+│   └── tilesets/                           # 复用的瓦片物理图层配置
+│       └── arena_tileset.tres
+│
+├── scripts/                                # 纯逻辑脚本与算法（无绑定独立场景）
+│   ├── skills/                             # 技能策略模式实现 (Strategy)
+│   │   ├── skill_data.gd                   # 技能抽象基类
+│   │   ├── melee_skill.gd                  # 挥砍类逻辑
+│   │   ├── dash_skill.gd                   # 位移类逻辑
+│   │   └── projectile_skill.gd             # 飞行物发射逻辑
+│   └── utils/                              # 工具函数库
+│       └── combat_math.gd                  # 统一伤害公式与受击击退计算
+│
+├── scenes/                                 # 节点树预制体 (.tscn) 与就近绑定的控制脚本
+│   ├── main/                               # 战局宿主与主控制流
+│   │   ├── battle_world.tscn               # 战斗主世界容器
+│   │   └── battle_world.gd                 # 负责载入地图、生成角色、裁判胜负
+│   │
+│   ├── characters/                         # 实体物理容器
+│   │   ├── base_character.tscn             # 通用物理肉体
+│   │   ├── base_character.gd               # 接收属性、应用位移、处理受击
+│   │   ├── hurtbox.tscn                    # 受击盒 Area2D
+│   │   └── hitbox.tscn                     # 伤害判定盒 Area2D
+│   │
+│   ├── controllers/                        # 大脑控制器（向肉体注入行为）
+│   │   ├── player_controller.gd            # 玩家键鼠/摇杆输入解析
+│   │   └── ai_controller.gd                # AI 追击/索敌/避障行为
+│   │
+│   ├── projectiles/                        # 动态衍生物场景（子弹、陷阱、特效）
+│   │   ├── base_projectile.tscn            # 飞行物基类
+│   │   └── base_projectile.gd
+│   │
+│   ├── maps/                               # 各对战场地容器
+│   │   ├── game_map.gd                     # 地图基类（提供出生点、边界获取）
+│   │   ├── arena_small.tscn                # 小型封闭竞技场
+│   │   └── arena_large.tscn                # 大型竞技场
+│   │
+│   └── ui/                                 # 界面层
+│       ├── hud.tscn                        # 战斗内血条、技能 CD 栏
+│       ├── game_over_panel.tscn            # 结算弹窗
+│       └── touch_controls.tscn             # 后期接入的移动端虚拟摇杆层
+│
+└── autoload/                               # 全局单例（Autoload）
+    ├── game_manager.gd                     # 核心状态中转（记录选中的角色与地图）
+    └── audio_manager.gd                    # 全局音效与音乐路由播放器
+
+
+
+
+
+
+
+
+
+
+
+
+res://
 ├── .godot/                             # 引擎本地缓存（Git 已忽略）
 ├── .gitignore
 ├── project.godot

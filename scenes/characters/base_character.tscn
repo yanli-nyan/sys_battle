@@ -1,7 +1,8 @@
 [gd_scene format=3 uid="uid://dsflvcbstfvo0"]
 
-[ext_resource type="Script" uid="uid://b8budujeuitni" path="res://scenes/characters/character.gd.gd" id="1_svwev"]
+[ext_resource type="Script" uid="uid://chotsd4w1nukf" path="res://scenes/characters/base_character.gd" id="1_svwev"]
 [ext_resource type="Texture2D" uid="uid://be5bl85jgf2l2" path="res://resources/texture/characters/企鹅.png" id="1_ykald"]
+[ext_resource type="Resource" uid="uid://c3spsidcjlt2o" path="res://resources/characters/test.tres" id="2_g1bqe"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_bjqgx"]
 radius = 15.0
@@ -14,6 +15,7 @@ radius = 20.0
 
 [node name="Character" type="CharacterBody2D" unique_id=742734879]
 script = ExtResource("1_svwev")
+character_data = ExtResource("2_g1bqe")
 
 [node name="Visual" type="Node2D" parent="." unique_id=1174750766]
 

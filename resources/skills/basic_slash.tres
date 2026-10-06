@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BasicAttackData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/characters/basic_attack_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+attack_rate = 0.35
+combo_reset_time = 0.8
+damages = Array[int]([15, 15, 30])

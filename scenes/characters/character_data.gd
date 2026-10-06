@@ -1,0 +1,14 @@
+class_name CharacterData
+extends Resource
+
+@export_group("基础属性")
+@export var character_name: String = "未命名角色"
+@export var max_hp: int = 100
+@export var move_speed: float = 160.0
+@export var attack_speed: float = 1.0
+
+@export_group("普通攻击")
+@export var basic_attack: BasicAttackData
+
+@export_group("战术技能")
+@export var active_skills: Array[SkillData] = []

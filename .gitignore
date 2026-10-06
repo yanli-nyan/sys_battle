@@ -20,6 +20,7 @@ dist/
 *.tmp
 Thumbs.db
 .DS_Store
+raw_assets/
 
 # Mono / C# 编译产物（仅在使用 C# 时需要）
 obj/

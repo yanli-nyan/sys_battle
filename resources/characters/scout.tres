@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/characters/character_data.gd" id="1_char_script"]
+[ext_resource type="Resource" path="res://resources/skills/basic_slash.tres" id="2_slash_skill"]
+
+[resource]
+script = ExtResource("1_char_script")
+character_name = "gggg"
+max_hp = 60
+move_speed = 200.0
+attack_speed = 1.0
+basic_attack = ExtResource("2_slash_skill")
+active_skills = []
