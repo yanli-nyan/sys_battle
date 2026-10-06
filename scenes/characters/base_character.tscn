@@ -2,10 +2,15 @@
 
 [ext_resource type="Script" uid="uid://b8budujeuitni" path="res://scenes/characters/character.gd.gd" id="1_svwev"]
 [ext_resource type="Texture2D" uid="uid://be5bl85jgf2l2" path="res://resources/texture/characters/企鹅.png" id="1_ykald"]
-[ext_resource type="Script" uid="uid://cq3dq8fvh6g8p" path="res://scenes/characters/player_controller.gd" id="3_g1bqe"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_bjqgx"]
 radius = 15.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_8jovo"]
+radius = 15.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_uqv50"]
+radius = 20.0
 
 [node name="Character" type="CharacterBody2D" unique_id=742734879]
 script = ExtResource("1_svwev")
@@ -20,7 +25,14 @@ shape = SubResource("CircleShape2D_bjqgx")
 
 [node name="Brain" type="Node2D" parent="." unique_id=993937848]
 
-[node name="PlayerController" type="Node2D" parent="Brain" unique_id=1863503486]
-script = ExtResource("3_g1bqe")
+[node name="Hurtbox" type="Area2D" parent="." unique_id=539812867]
 
-[node name="Camera2D" type="Camera2D" parent="Brain/PlayerController" unique_id=1823127501]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=208964891]
+shape = SubResource("CircleShape2D_8jovo")
+
+[node name="HitboxPivot" type="Node2D" parent="." unique_id=869762600]
+
+[node name="Hitbox" type="Area2D" parent="HitboxPivot" unique_id=1839034067]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HitboxPivot/Hitbox" unique_id=1168232479]
+shape = SubResource("CircleShape2D_uqv50")
