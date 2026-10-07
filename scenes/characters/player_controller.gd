@@ -19,5 +19,9 @@ func _process(_delta: float) -> void:
 	if touch_vector.length_squared() > 0.0:
 		final_vector = touch_vector
 
+	# 默认是空格/回车
+	if Input.is_action_just_pressed("ui_accept"): 
+		character.perform_basic_attack()
+
 	# 3. 注入给 Character 身体
 	character.move_direction = final_vector

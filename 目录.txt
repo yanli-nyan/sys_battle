@@ -71,8 +71,8 @@ res://
 │       └── touch_controls.tscn             # 后期接入的移动端虚拟摇杆层
 │
 └── autoload/                               # 全局单例（Autoload）
-    ├── game_manager.gd                     # 核心状态中转（记录选中的角色与地图）
-    └── audio_manager.gd                    # 全局音效与音乐路由播放器
+	├── game_manager.gd                     # 核心状态中转（记录选中的角色与地图）
+	└── audio_manager.gd                    # 全局音效与音乐路由播放器
 
 
 
@@ -128,4 +128,4 @@ res://
 │       └── selection_menu.tscn         # 未来的选人/选地图菜单
 │
 └── autoload/                           # 全局单例脚本（在 Project Settings 注册）
-    └── match_config.gd                 # 战局配置中介（记录谁被选为玩家、加载哪张图）
+	└── match_config.gd                 # 战局配置中介（记录谁被选为玩家、加载哪张图）

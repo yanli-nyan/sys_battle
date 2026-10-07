@@ -19,3 +19,4 @@ func _process(_delta: float) -> void:
 		character.move_direction = dir
 	else:
 		character.move_direction = Vector2.ZERO
+		character.perform_basic_attack()

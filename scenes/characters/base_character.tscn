@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://chotsd4w1nukf" path="res://scenes/characters/base_character.gd" id="1_svwev"]
 [ext_resource type="Texture2D" uid="uid://be5bl85jgf2l2" path="res://resources/texture/characters/企鹅.png" id="1_ykald"]
-[ext_resource type="Resource" uid="uid://c3spsidcjlt2o" path="res://resources/characters/test.tres" id="2_g1bqe"]
+[ext_resource type="Resource" path="res://resources/characters/test.tres" id="2_g1bqe"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_bjqgx"]
 radius = 15.0
@@ -11,7 +11,13 @@ radius = 15.0
 radius = 15.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_uqv50"]
-radius = 20.0
+radius = 25.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_svwev"]
+bg_color = Color(0, 0, 0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_g1bqe"]
+bg_color = Color(0.90588236, 0.29803923, 0.23529412, 1)
 
 [node name="Character" type="CharacterBody2D" unique_id=742734879]
 script = ExtResource("1_svwev")
@@ -28,6 +34,8 @@ shape = SubResource("CircleShape2D_bjqgx")
 [node name="Brain" type="Node2D" parent="." unique_id=993937848]
 
 [node name="Hurtbox" type="Area2D" parent="." unique_id=539812867]
+collision_layer = 4
+collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=208964891]
 shape = SubResource("CircleShape2D_8jovo")
@@ -35,6 +43,20 @@ shape = SubResource("CircleShape2D_8jovo")
 [node name="HitboxPivot" type="Node2D" parent="." unique_id=869762600]
 
 [node name="Hitbox" type="Area2D" parent="HitboxPivot" unique_id=1839034067]
+collision_layer = 0
+collision_mask = 4
+monitoring = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HitboxPivot/Hitbox" unique_id=1168232479]
 shape = SubResource("CircleShape2D_uqv50")
+
+[node name="HealthBar" type="ProgressBar" parent="." unique_id=1508572866]
+offset_left = -16.0
+offset_top = -26.0
+offset_right = 16.0
+offset_bottom = -22.0
+theme_override_styles/background = SubResource("StyleBoxFlat_svwev")
+theme_override_styles/fill = SubResource("StyleBoxFlat_g1bqe")
+step = 1.0
+value = 100.0
+show_percentage = false
