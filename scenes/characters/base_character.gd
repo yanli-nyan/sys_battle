@@ -40,6 +40,12 @@ func apply_data(data: CharacterData) -> void:
 	if health_bar:
 		health_bar.max_value = data.max_hp
 		health_bar.value = current_hp
+
+	# 动态替换贴图与偏移
+	if visual_sprite:
+		if data.sprite_texture:
+			visual_sprite.texture = data.sprite_texture
+		visual_sprite.offset = data.texture_offset
 	
 	# 深拷贝技能实例，确保不同角色的冷却独立计算
 	runtime_skills.clear()

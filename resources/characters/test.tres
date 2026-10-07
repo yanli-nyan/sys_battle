@@ -1,13 +1,14 @@
-[gd_resource type="Resource" script_class="CharacterData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://bkdclc1jh14td"]
 
-[ext_resource type="Script" path="res://scenes/characters/character_data.gd" id="1_char_script"]
+[ext_resource type="Script" uid="uid://df1hblm0p1rjn" path="res://scenes/characters/character_data.gd" id="1_char_script"]
+[ext_resource type="Script" uid="uid://dc502nyvkuryi" path="res://scripts/skills/skill_data.gd" id="1_vd67i"]
 [ext_resource type="Resource" path="res://resources/skills/basic_slash.tres" id="2_slash_skill"]
+[ext_resource type="Texture2D" uid="uid://c47wllo35p7yk" path="res://resources/texture/characters/将军.png" id="2_vd67i"]
 
 [resource]
 script = ExtResource("1_char_script")
 character_name = "test"
 max_hp = 150
-move_speed = 160.0
-attack_speed = 1.0
+sprite_texture = ExtResource("2_vd67i")
+avatar = ExtResource("2_vd67i")
 basic_attack = ExtResource("2_slash_skill")
-active_skills = []
