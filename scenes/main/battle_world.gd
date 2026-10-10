@@ -1,13 +1,14 @@
 extends Node2D
 
-## 战局宿主：加载地图 → 生成参战者 → 挂载大脑与相机 → 裁判胜负。
+## 战局宿主：加载地图 → 按出生点铺开参战者 → 挂载大脑与相机 → 裁判胜负。
 ##
 ## 地图以独立场景插入 MapRoot，本脚本只依赖 GameMap 暴露的接口，
 ## 所以换地图（含每图不同的触控 UI）都不需要改动这里一行代码。
 
 const CHARACTER_SCENE: PackedScene = preload("res://scenes/characters/base_character.tscn")
-const PLAYER_DATA: CharacterData = preload("res://resources/characters/test.tres")
-const ENEMY_DATA: CharacterData = preload("res://resources/characters/scout.tres")
+## 默认参战角色数据。目前所有角色都先用 test 顶替，
+## 后续要做「每人一套属性/技能」时，把 fighter_data 换成列表即可。
+const DEFAULT_FIGHTER_DATA: CharacterData = preload("res://resources/characters/test.tres")
 
 const PLAYER_CONTROLLER_SCRIPT: GDScript = preload("res://scenes/characters/player_controller.gd")
 const AI_CONTROLLER_SCRIPT: GDScript = preload("res://scenes/characters/ai_controller.gd")
@@ -20,8 +21,12 @@ const DEFAULT_TOUCH_CONTROLS: PackedScene = preload("res://scenes/ui/touch_contr
 @export_group("战局配置")
 ## 本局要加载的地图场景；留空则使用 DEFAULT_MAP_SCENE
 @export var map_scene: PackedScene
-## 生成的 AI 敌人数量
-@export_range(0, 8, 1) var enemy_count: int = 1
+## 参战者统一使用的角色数据；留空则使用 DEFAULT_FIGHTER_DATA
+@export var fighter_data: CharacterData
+## 本局参战人数（含玩家）。按顺序占用地图出生点，超出时 GameMap 会自动循环复用。
+@export_range(1, 16, 1) var fighter_count: int = 9
+## 玩家占用第几个出生点（0 起）
+@export var player_spawn_index: int = 0
 ## 玩家相机缩放（适配 32×32 像素网格）
 @export var camera_zoom: Vector2 = Vector2(2.5, 2.5)
 
@@ -39,8 +44,6 @@ var player_brain: PlayerController = null
 
 var alive_fighters: Array[CharacterBody2D] = []
 var is_match_over: bool = false
-
-var _spawn_cursor: int = 0
 
 
 func _ready() -> void:
@@ -104,48 +107,75 @@ func setup_touch_controls() -> void:
 
 # ---------- 参战者生成 ----------
 
+## 在地图出生点上铺开参战者：1 个玩家 + 其余全 AI。
+## 出生点数不够时由 GameMap 循环复用出生点。
 func spawn_match() -> void:
-	_spawn_cursor = 0
+	if current_map == null:
+		push_error("战局没有加载地图，无法生成参战者。")
+		return
 
-	if current_map and 1 + enemy_count > current_map.capacity:
-		push_warning("参战人数 %d 超过地图 %s 的建议容量 %d，出生点将循环复用。"
-			% [1 + enemy_count, current_map.display_name, current_map.capacity])
+	var total: int = maxi(fighter_count, 1)
+	var spawn_total: int = current_map.get_spawn_count()
+	if spawn_total > 0 and total > spawn_total:
+		push_warning("参战人数 %d 超过地图出生点数 %d，多出的角色会和已有角色叠在同一位置。"
+			% [total, spawn_total])
 
-	# 1. 玩家
-	var player := CHARACTER_SCENE.instantiate() as CharacterBody2D
-	add_child(player)
-	player.global_position = _spawn_position(_take_spawn())
-	player.name = "Player"
-	player.add_to_group("player")
-	player.apply_data(PLAYER_DATA)
-	player_instance = player
-	_register_fighter(player)
+	var player_slot: int = clampi(player_spawn_index, 0, total - 1)
+	_spawn_fighter(player_slot, true, "Player")
 
+	var slot: int = 0
+	var spawned: int = 1
+	while spawned < total:
+		if slot != player_slot:
+			_spawn_fighter(slot, false, "AI_%d" % spawned)
+			spawned += 1
+		slot += 1
+
+	print("战局开始：%d 名参战者（出生点 %d 个）" % [alive_fighters.size(), spawn_total])
+
+
+## 生成一名参战者并挂上对应的大脑
+func _spawn_fighter(spawn_index: int, is_player: bool, node_name: String) -> void:
+	var body := CHARACTER_SCENE.instantiate() as CharacterBody2D
+
+	# 位置必须在入树之前设好：两个 CharacterBody2D 在同一坐标注册，
+	# 物理引擎的重叠解算会把其中一个弹飞。
+	body.position = to_local(current_map.get_spawn_position(spawn_index))
+	body.name = node_name
+	add_child(body)
+	body.add_to_group("fighter")
+
+	body.apply_data(fighter_data if fighter_data else DEFAULT_FIGHTER_DATA)
+
+	if is_player:
+		player_instance = body
+		body.add_to_group("player")
+		_setup_player_brain(body)
+	else:
+		_setup_ai_brain(body)
+
+	_register_fighter(body)
+
+
+func _setup_player_brain(body: CharacterBody2D) -> void:
 	player_brain = PLAYER_CONTROLLER_SCRIPT.new()
 	player_brain.name = "PlayerController"
-	player.get_node("Brain").add_child(player_brain)
+	body.get_node("Brain").add_child(player_brain)
 
 	var camera := Camera2D.new()
 	camera.name = "Camera2D"
 	camera.zoom = camera_zoom
 	_apply_camera_limits(camera)
-	player.add_child(camera)
+	body.add_child(camera)
 
-	# 2. 敌人
-	for i in enemy_count:
-		var enemy := CHARACTER_SCENE.instantiate() as CharacterBody2D
-		add_child(enemy)
-		enemy.global_position = _spawn_position(_take_spawn())
-		enemy.name = "Enemy_%d" % (i + 1)
-		enemy.apply_data(ENEMY_DATA)
-		_register_fighter(enemy)
-
-		var ai: AIController = AI_CONTROLLER_SCRIPT.new()
-		ai.name = "AIController"
-		enemy.get_node("Brain").add_child(ai)
-
-	# 3. 触控输入接线（必须在玩家大脑就绪之后）
+	# 触控输入接线（必须在玩家大脑就绪之后）
 	_wire_touch_controls()
+
+
+func _setup_ai_brain(body: CharacterBody2D) -> void:
+	var ai: AIController = AI_CONTROLLER_SCRIPT.new()
+	ai.name = "AIController"
+	body.get_node("Brain").add_child(ai)
 
 
 ## 触控层只抛信号，由战局接线到玩家大脑，保证 UI 与角色解耦
@@ -159,19 +189,6 @@ func _wire_touch_controls() -> void:
 		touch_controls.attack_pressed.connect(player_brain.request_basic_attack)
 	if not touch_controls.skill_pressed.is_connected(player_brain.request_skill):
 		touch_controls.skill_pressed.connect(player_brain.request_skill)
-
-
-## 出生点按顺序取用，取完循环
-func _take_spawn() -> int:
-	var index := _spawn_cursor
-	_spawn_cursor += 1
-	return index
-
-
-func _spawn_position(index: int) -> Vector2:
-	if current_map:
-		return current_map.get_spawn_position(index)
-	return map_root.global_position
 
 
 ## 把地图边界同步给相机，避免镜头移出地形

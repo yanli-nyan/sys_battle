@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="SlowFieldSkill" format=3]
+
+[ext_resource type="Script" path="res://scripts/skills/slow_field_skill.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+skill_name = "迟滞力场"
+cooldown = 9.0
+radius = 450.0
+speed_multiplier = 0.45
+duration = 3.0
+field_color = Color(0.35, 0.6, 1, 0.7)

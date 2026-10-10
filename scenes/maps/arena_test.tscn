@@ -1,7 +1,7 @@
-[gd_scene load_steps=7 format=4]
+[gd_scene format=4 uid="uid://d2wi0444ipmkb"]
 
 [ext_resource type="Texture2D" uid="uid://buykpculrnqud" path="res://resources/texture/environment/Ground.png" id="1_03h0k"]
-[ext_resource type="Script" path="res://scripts/maps/game_map.gd" id="1_map_script"]
+[ext_resource type="Script" uid="uid://db4mmhgmumm5h" path="res://scripts/maps/game_map.gd" id="1_map_script"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_4pyfg"]
 texture = ExtResource("1_03h0k")
@@ -157,7 +157,7 @@ tile_size = Vector2i(32, 32)
 physics_layer_0/collision_layer = 1
 sources/0 = SubResource("TileSetAtlasSource_ipji2")
 
-[node name="ArenaTest" type="Node2D"]
+[node name="ArenaTest" type="Node2D" unique_id=1468192402]
 script = ExtResource("1_map_script")
 display_name = "试炼场"
 
@@ -194,3 +194,6 @@ position = Vector2(1238, 686)
 
 [node name="Spawn8" type="Marker2D" parent="SpawnPoints" unique_id=1037653372]
 position = Vector2(1764, 910)
+
+[node name="Spawn9" type="Marker2D" parent="SpawnPoints" unique_id=236888903]
+position = Vector2(747, 921)

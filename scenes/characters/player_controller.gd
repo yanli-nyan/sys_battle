@@ -35,10 +35,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_accept"):
 		request_basic_attack()
 
-	# E 键：释放战术技能 0
+	# E 键等价于 1 号槽；数字键 1-9 直接对应技能槽 0-8
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_E:
-			request_skill(0)
+		var slot := _slot_from_keycode(event.keycode)
+		if slot >= 0:
+			request_skill(slot)
+
+
+## 数字键 1..9 映射到技能槽 0..8，其余按键返回 -1
+func _slot_from_keycode(keycode: Key) -> int:
+	if keycode == KEY_E:
+		return 0
+	if keycode >= KEY_1 and keycode <= KEY_9:
+		return int(keycode) - int(KEY_1)
+	return -1
 
 
 # ---------- 供触控层 / 外部系统调用的公开接口 ----------
