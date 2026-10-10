@@ -10,6 +10,8 @@
 script = ExtResource("1_char_script")
 character_name = "test"
 max_hp = 150
+hitbox_radius = 18.0
+hurtbox_radius = 15.0
 sprite_texture = ExtResource("2_vd67i")
 avatar = ExtResource("2_vd67i")
 basic_attack = ExtResource("2_slash_skill")

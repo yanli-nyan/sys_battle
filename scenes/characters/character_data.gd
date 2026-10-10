@@ -7,6 +7,10 @@ extends Resource
 @export var move_speed: float = 160.0
 @export var attack_speed: float = 1.0
 
+@export_group("碰撞体")
+@export var hitbox_radius: float = 18.0        # 普攻判定盒(Hitbox)半径，决定近战攻击距离
+@export var hurtbox_radius: float = 15.0       # 受击盒(Hurtbox)半径，决定被打中的难易程度
+
 @export_group("视觉资产")
 @export var sprite_texture: Texture2D           # 局内模型贴图 (PNG)
 @export var avatar: Texture2D                   # 头像/UI立绘

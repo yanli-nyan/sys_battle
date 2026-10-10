@@ -19,7 +19,9 @@ signal died(victim: CharacterBody2D)
 
 @onready var hitbox_pivot: Node2D = $HitboxPivot
 @onready var hitbox: Area2D = $HitboxPivot/Hitbox
+@onready var hitbox_shape: CollisionShape2D = $HitboxPivot/Hitbox/CollisionShape2D
 @onready var hurtbox: Area2D = $Hurtbox
+@onready var hurtbox_shape: CollisionShape2D = $Hurtbox/CollisionShape2D
 
 @onready var visual_sprite: Sprite2D = $Visual/Sprite2D
 
@@ -47,11 +49,31 @@ func apply_data(data: CharacterData) -> void:
 			visual_sprite.texture = data.sprite_texture
 		visual_sprite.offset = data.texture_offset
 	
+	# 判定盒 / 受击盒尺寸同样由数据驱动，每个角色可以有各自的攻击距离与体型
+	_apply_shape_radius(hitbox_shape, data.hitbox_radius, "Hitbox")
+	_apply_shape_radius(hurtbox_shape, data.hurtbox_radius, "Hurtbox")
+
 	# 深拷贝技能实例，确保不同角色的冷却独立计算
 	runtime_skills.clear()
 	for skill in data.active_skills:
 		if skill:
 			runtime_skills.append(skill.duplicate())
+
+# 把数据里的半径写到碰撞形状上（Hitbox / Hurtbox 共用）。
+# 注意：场景里的 SubResource 在所有实例之间是共享的，必须先拷贝再改，
+# 否则同屏多个角色会互相覆盖，最后全都变成同一个尺寸。
+func _apply_shape_radius(shape_node: CollisionShape2D, radius: float, label: String) -> void:
+	if shape_node == null:
+		return
+
+	var circle := shape_node.shape as CircleShape2D
+	if circle == null:
+		push_warning("%s 的碰撞形状不是 CircleShape2D，尺寸配置不会生效。" % label)
+		return
+
+	var shaped := circle.duplicate() as CircleShape2D
+	shaped.radius = radius
+	shape_node.shape = shaped
 
 func _physics_process(delta: float) -> void:
 	# 1. 推进所有已装备技能的冷却
