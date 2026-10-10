@@ -1,3 +1,4 @@
+class_name AIController
 extends Node2D
 
 @onready var character: CharacterBody2D = get_parent().get_parent()

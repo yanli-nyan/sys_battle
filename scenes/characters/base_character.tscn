@@ -4,13 +4,13 @@
 [ext_resource type="Resource" uid="uid://bkdclc1jh14td" path="res://resources/characters/test.tres" id="2_g1bqe"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_bjqgx"]
-radius = 15.0
+radius = 14.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_8jovo"]
 radius = 15.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_uqv50"]
-radius = 25.0
+radius = 18.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_svwev"]
 bg_color = Color(0, 0, 0, 1)

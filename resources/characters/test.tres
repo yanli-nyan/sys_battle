@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://df1hblm0p1rjn" path="res://scenes/characters/character_data.gd" id="1_char_script"]
 [ext_resource type="Script" uid="uid://dc502nyvkuryi" path="res://scripts/skills/skill_data.gd" id="1_vd67i"]
+[ext_resource type="Resource" uid="uid://8nwnflfwuxqs" path="res://resources/skills/ground_slam.tres" id="2_5mkme"]
 [ext_resource type="Resource" path="res://resources/skills/basic_slash.tres" id="2_slash_skill"]
 [ext_resource type="Texture2D" uid="uid://c47wllo35p7yk" path="res://resources/texture/characters/将军.png" id="2_vd67i"]
 
@@ -12,3 +13,4 @@ max_hp = 150
 sprite_texture = ExtResource("2_vd67i")
 avatar = ExtResource("2_vd67i")
 basic_attack = ExtResource("2_slash_skill")
+active_skills = Array[ExtResource("1_vd67i")]([ExtResource("2_5mkme")])

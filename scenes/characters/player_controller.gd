@@ -1,9 +1,16 @@
+class_name PlayerController
 extends Node2D
+
+## 玩家大脑：把 PC 键鼠输入与移动端触控输入统一翻译成对肉体的指令。
+##
+## 触控层（TouchControls）不直接操作角色，只抛信号；由战局把信号接到
+## 下面三个公开方法上，因此同一套触控 UI 可以复用到任意角色与任意地图。
 
 @onready var character: CharacterBody2D = get_parent().get_parent()
 
-# 虚拟摇杆等移动端 UI 注入的方向向量（无触控时保持 Vector2.ZERO）
+## 虚拟摇杆注入的方向向量（无触控时保持 Vector2.ZERO）
 var touch_vector: Vector2 = Vector2.ZERO
+
 
 func _process(_delta: float) -> void:
 	if not character:
@@ -19,9 +26,35 @@ func _process(_delta: float) -> void:
 	if touch_vector.length_squared() > 0.0:
 		final_vector = touch_vector
 
-	# 默认是空格/回车
-	if Input.is_action_just_pressed("ui_accept"): 
-		character.perform_basic_attack()
-
 	# 3. 注入给 Character 身体
 	character.move_direction = final_vector
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# 空格键：普通攻击
+	if event.is_action_pressed("ui_accept"):
+		request_basic_attack()
+
+	# E 键：释放战术技能 0
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_E:
+			request_skill(0)
+
+
+# ---------- 供触控层 / 外部系统调用的公开接口 ----------
+
+## 写入摇杆方向（长度 0~1，Vector2.ZERO 表示松手）
+func set_touch_direction(direction: Vector2) -> void:
+	touch_vector = direction
+
+
+## 请求一次普通攻击
+func request_basic_attack() -> void:
+	if character:
+		character.perform_basic_attack()
+
+
+## 请求释放第 slot_index 个主动技能
+func request_skill(slot_index: int) -> void:
+	if character:
+		character.cast_active_skill(slot_index)

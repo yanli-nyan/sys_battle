@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="AOESkill" format=3 uid="uid://8nwnflfwuxqs"]
+
+[ext_resource type="Script" uid="uid://dtm0040c2sstv" path="res://scripts/skills/aoe_skill.gd" id="1_gama4"]
+
+[resource]
+script = ExtResource("1_gama4")
