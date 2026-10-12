@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://bamkytlfopmu0"]
+
+[ext_resource type="Script" uid="uid://dc502nyvkuryi" path="res://scripts/skills/skill_data.gd" id="1_06c52"]
+[ext_resource type="Resource" uid="uid://8nwnflfwuxqs" path="res://resources/skills/ground_slam.tres" id="2_4juco"]
+[ext_resource type="Script" uid="uid://df1hblm0p1rjn" path="res://scenes/characters/character_data.gd" id="2_niee3"]
+[ext_resource type="Texture2D" uid="uid://c47wllo35p7yk" path="res://resources/texture/characters/将军.png" id="3_81d4j"]
+[ext_resource type="Script" uid="uid://b0r7uh08888jn" path="res://scenes/characters/basic_attack_data.gd" id="4_g6rlq"]
+
+[sub_resource type="Resource" id="Resource_f3bos"]
+script = ExtResource("4_g6rlq")
+metadata/_custom_type_script = "uid://b0r7uh08888jn"
+
+[resource]
+script = ExtResource("2_niee3")
+character_name = "jiangjun"
+sprite_texture = ExtResource("3_81d4j")
+avatar = ExtResource("3_81d4j")
+basic_attack = SubResource("Resource_f3bos")
+active_skills = Array[ExtResource("1_06c52")]([ExtResource("2_4juco")])
+metadata/_custom_type_script = "uid://df1hblm0p1rjn"

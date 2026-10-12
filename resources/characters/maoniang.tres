@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://cc537ut8l0dep"]
+
+[ext_resource type="Script" uid="uid://dc502nyvkuryi" path="res://scripts/skills/skill_data.gd" id="1_t0n52"]
+[ext_resource type="Script" uid="uid://df1hblm0p1rjn" path="res://scenes/characters/character_data.gd" id="2_7ibsm"]
+[ext_resource type="Script" uid="uid://b0r7uh08888jn" path="res://scenes/characters/basic_attack_data.gd" id="2_wj7jg"]
+[ext_resource type="Texture2D" uid="uid://bi8b1jutb6li3" path="res://resources/texture/characters/猫娘.png" id="4_wj7jg"]
+
+[sub_resource type="Resource" id="Resource_asjwg"]
+script = ExtResource("2_wj7jg")
+metadata/_custom_type_script = "uid://b0r7uh08888jn"
+
+[resource]
+script = ExtResource("2_7ibsm")
+character_name = "maoniang"
+sprite_texture = ExtResource("4_wj7jg")
+basic_attack = SubResource("Resource_asjwg")
+metadata/_custom_type_script = "uid://df1hblm0p1rjn"

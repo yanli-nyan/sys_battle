@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://boehj8veinkqv"]
+
+[ext_resource type="Script" uid="uid://dc502nyvkuryi" path="res://scripts/skills/skill_data.gd" id="1_a1hcf"]
+[ext_resource type="Script" uid="uid://b0r7uh08888jn" path="res://scenes/characters/basic_attack_data.gd" id="2_4h5u5"]
+[ext_resource type="Script" uid="uid://df1hblm0p1rjn" path="res://scenes/characters/character_data.gd" id="2_4ua7w"]
+[ext_resource type="Texture2D" uid="uid://dcsr7055rh7aj" path="res://resources/texture/characters/国树.png" id="4_4h5u5"]
+
+[sub_resource type="Resource" id="Resource_2pvq3"]
+script = ExtResource("2_4h5u5")
+metadata/_custom_type_script = "uid://b0r7uh08888jn"
+
+[resource]
+script = ExtResource("2_4ua7w")
+character_name = "guoshu"
+sprite_texture = ExtResource("4_4h5u5")
+basic_attack = SubResource("Resource_2pvq3")
+metadata/_custom_type_script = "uid://df1hblm0p1rjn"

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://b2jlhfyjwvgo"]
+
+[ext_resource type="Script" uid="uid://dc502nyvkuryi" path="res://scripts/skills/skill_data.gd" id="1_xds3y"]
+[ext_resource type="Resource" path="res://resources/skills/speed_boost.tres" id="2_5i680"]
+[ext_resource type="Script" uid="uid://df1hblm0p1rjn" path="res://scenes/characters/character_data.gd" id="2_f3bos"]
+[ext_resource type="Script" uid="uid://b0r7uh08888jn" path="res://scenes/characters/basic_attack_data.gd" id="2_jt4gs"]
+[ext_resource type="Texture2D" uid="uid://be5bl85jgf2l2" path="res://resources/texture/characters/企鹅.png" id="5_5i680"]
+
+[sub_resource type="Resource" id="Resource_xds3y"]
+script = ExtResource("2_jt4gs")
+metadata/_custom_type_script = "uid://b0r7uh08888jn"
+
+[resource]
+script = ExtResource("2_f3bos")
+character_name = "guwu"
+sprite_texture = ExtResource("5_5i680")
+basic_attack = SubResource("Resource_xds3y")
+active_skills = Array[ExtResource("1_xds3y")]([ExtResource("2_5i680")])
+metadata/_custom_type_script = "uid://df1hblm0p1rjn"

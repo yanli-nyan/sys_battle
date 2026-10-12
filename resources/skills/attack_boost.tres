@@ -1,12 +1,11 @@
-[gd_resource type="Resource" script_class="BuffSkill" format=3]
+[gd_resource type="Resource" script_class="BuffSkill" format=3 uid="uid://djam083k1chbp"]
 
-[ext_resource type="Script" path="res://scripts/skills/buff_skill.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://blwshcbd8qs3h" path="res://scripts/skills/buff_skill.gd" id="1_script"]
 
 [resource]
 script = ExtResource("1_script")
-skill_name = "战意"
-cooldown = 10
 stat = 1
 multiplier = 1.8
-duration = 5
 aura_color = Color(1, 0.5, 0.3, 0.8)
+skill_name = "战意"
+cooldown = 10

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://b7ebvjfkf8nyj"]
+
+[ext_resource type="Script" uid="uid://dc502nyvkuryi" path="res://scripts/skills/skill_data.gd" id="1_uhqow"]
+[ext_resource type="Resource" path="res://resources/skills/slow_field.tres" id="2_a6gob"]
+[ext_resource type="Script" uid="uid://df1hblm0p1rjn" path="res://scenes/characters/character_data.gd" id="2_ortw5"]
+[ext_resource type="Script" uid="uid://b0r7uh08888jn" path="res://scenes/characters/basic_attack_data.gd" id="3_8yoy0"]
+[ext_resource type="Texture2D" uid="uid://l0htsainugqg" path="res://resources/texture/characters/章鱼.png" id="5_8yoy0"]
+
+[sub_resource type="Resource" id="Resource_ptvev"]
+script = ExtResource("3_8yoy0")
+metadata/_custom_type_script = "uid://b0r7uh08888jn"
+
+[resource]
+script = ExtResource("2_ortw5")
+character_name = "zhangyu"
+sprite_texture = ExtResource("5_8yoy0")
+basic_attack = SubResource("Resource_ptvev")
+active_skills = Array[ExtResource("1_uhqow")]([ExtResource("2_a6gob")])
+metadata/_custom_type_script = "uid://df1hblm0p1rjn"

@@ -15,6 +15,10 @@ run/main_scene="res://scenes/main/battle_world.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"
 
+[autoload]
+
+MatchConfig="*res://autoload/match_config.gd"
+
 [display]
 
 window/size/viewport_width=1920

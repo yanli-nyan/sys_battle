@@ -1,14 +1,14 @@
 extends Node2D
 
-## 战局宿主：加载地图 → 按出生点铺开参战者 → 挂载大脑与相机 → 裁判胜负。
+## 战局宿主：加载地图 → 随机铺开参战者 → 挂载大脑与相机 → 裁判胜负。
 ##
 ## 地图以独立场景插入 MapRoot，本脚本只依赖 GameMap 暴露的接口，
 ## 所以换地图（含每图不同的触控 UI）都不需要改动这里一行代码。
+##
+## 出场名单是随机的：角色从角色表里抽，位置从地图实际出生点里抽。
+## 出生点数量由地图决定（GameMap.get_spawn_count()），这里不写死任何数字。
 
 const CHARACTER_SCENE: PackedScene = preload("res://scenes/characters/base_character.tscn")
-## 默认参战角色数据。目前所有角色都先用 test 顶替，
-## 后续要做「每人一套属性/技能」时，把 fighter_data 换成列表即可。
-const DEFAULT_FIGHTER_DATA: CharacterData = preload("res://resources/characters/test.tres")
 
 const PLAYER_CONTROLLER_SCRIPT: GDScript = preload("res://scenes/characters/player_controller.gd")
 const AI_CONTROLLER_SCRIPT: GDScript = preload("res://scenes/characters/ai_controller.gd")
@@ -18,15 +18,33 @@ const DEFAULT_MAP_SCENE: PackedScene = preload("res://scenes/maps/arena_test.tsc
 ## 默认触控 UI：地图没有自带覆盖时使用
 const DEFAULT_TOUCH_CONTROLS: PackedScene = preload("res://scenes/ui/touch_controls.tscn")
 
+## 角色资源目录：character_pool 留空时自动扫描这里，新增角色资源即可自动加入角色表
+const CHARACTER_DIR := "res://resources/characters"
+## 兜底角色：连目录都扫不到时至少还能开局
+const FALLBACK_CHARACTER: CharacterData = preload("res://resources/characters/test.tres")
+
 @export_group("战局配置")
 ## 本局要加载的地图场景；留空则使用 DEFAULT_MAP_SCENE
 @export var map_scene: PackedScene
-## 参战者统一使用的角色数据；留空则使用 DEFAULT_FIGHTER_DATA
-@export var fighter_data: CharacterData
-## 本局参战人数（含玩家）。按顺序占用地图出生点，超出时 GameMap 会自动循环复用。
+
+@export_group("出场名单")
+## 可随机出场的角色表（AI 用）；留空则自动扫描 CHARACTER_DIR 下的全部角色资源
+@export var character_pool: Array[CharacterData] = []
+## 玩家可选角色池；留空则与上面的角色表共用
+@export var player_character_pool: Array[CharacterData] = []
+## 玩家出场的角色（目前先在这里选）；留空则从玩家角色池随机。
+## 外部系统通过 MatchConfig.select_character() 指定时，优先于这一项。
+@export var player_character: CharacterData
+## 本局参战人数（含玩家）
 @export_range(1, 16, 1) var fighter_count: int = 9
-## 玩家占用第几个出生点（0 起）
-@export var player_spawn_index: int = 0
+## 玩家占用第几个出生点名额（0 起）
+@export var player_slot_index: int = 0
+## 出生点是否随机挑选；关掉则按 0,1,2… 顺序取用
+@export var randomize_spawn_points: bool = true
+## 随机种子：0 表示每局重新随机；填固定值可复现同一套出场名单
+@export var random_seed: int = 0
+
+@export_group("相机")
 ## 玩家相机缩放（适配 32×32 像素网格）
 @export var camera_zoom: Vector2 = Vector2(2.5, 2.5)
 
@@ -105,14 +123,70 @@ func setup_touch_controls() -> void:
 	_wire_touch_controls()
 
 
+# ---------- 出场名单 ----------
+
+## 解析角色表：
+##   1. 检视面板里配了 character_pool 就直接用（完全按你的意思来，不做过滤）；
+##   2. 否则扫描 CHARACTER_DIR，只收「能打且看得见」的角色，其余打印出来说明原因；
+##   3. 一个都没有时回退到 FALLBACK_CHARACTER。
+## 过滤条件很直白：没有 basic_attack 的角色出不了拳，没有 sprite_texture 的角色在场上隐形，
+## 两者都会让新角色看着像 bug，所以默认先挡在外面；想强行启用就往 character_pool 里拖。
+func resolve_character_pool() -> Array[CharacterData]:
+	var pool: Array[CharacterData] = []
+	for item in character_pool:
+		if item:
+			pool.append(item)
+	if not pool.is_empty():
+		return pool
+
+	var skipped: Array[String] = []
+	var dir := DirAccess.open(CHARACTER_DIR)
+	if dir:
+		var file_names := dir.get_files()
+		file_names.sort()
+		for file_name in file_names:
+			# 导出后 .tres 会被改写成 .res 或带 .remap 后缀，这里都认
+			var clean := file_name.trim_suffix(".remap")
+			if not (clean.ends_with(".tres") or clean.ends_with(".res")):
+				continue
+			var data := load(CHARACTER_DIR.path_join(clean)) as CharacterData
+			if data == null:
+				continue
+			if data.basic_attack == null:
+				skipped.append("%s(缺普攻)" % data.character_name)
+				continue
+			if data.sprite_texture == null:
+				skipped.append("%s(缺贴图)" % data.character_name)
+				continue
+			pool.append(data)
+
+	if not skipped.is_empty():
+		print("跳过资料不全的角色：", ", ".join(skipped))
+
+	if pool.is_empty():
+		push_warning("没有扫描到可用角色，回退到 %s。" % FALLBACK_CHARACTER.character_name)
+		pool.append(FALLBACK_CHARACTER)
+	return pool
+
+
 # ---------- 参战者生成 ----------
 
-## 在地图出生点上铺开参战者：1 个玩家 + 其余全 AI。
-## 出生点数不够时由 GameMap 循环复用出生点。
+## 随机铺开一局：角色从角色表里抽，位置从地图出生点里抽
 func spawn_match() -> void:
 	if current_map == null:
 		push_error("战局没有加载地图，无法生成参战者。")
 		return
+
+	var pool := resolve_character_pool()
+	if pool.is_empty():
+		push_error("角色表为空，无法生成参战者。")
+		return
+	print("角色表：", _character_names(pool), "（", pool.size(), " 种）")
+
+	var player_pool := _resolve_player_pool(pool)
+	print("玩家角色池：", _character_names(player_pool), "（", player_pool.size(), " 种）")
+	# 把本局可选的玩家角色同步给外部系统（选人界面等）
+	MatchConfig.publish_available_characters(player_pool)
 
 	var total: int = maxi(fighter_count, 1)
 	var spawn_total: int = current_map.get_spawn_count()
@@ -120,22 +194,118 @@ func spawn_match() -> void:
 		push_warning("参战人数 %d 超过地图出生点数 %d，多出的角色会和已有角色叠在同一位置。"
 			% [total, spawn_total])
 
-	var player_slot: int = clampi(player_spawn_index, 0, total - 1)
-	_spawn_fighter(player_slot, true, "Player")
+	var rng := RandomNumberGenerator.new()
+	if random_seed != 0:
+		rng.seed = random_seed
+	else:
+		rng.randomize()
 
-	var slot: int = 0
-	var spawned: int = 1
-	while spawned < total:
-		if slot != player_slot:
-			_spawn_fighter(slot, false, "AI_%d" % spawned)
-			spawned += 1
-		slot += 1
+	var spawn_indices := _pick_spawn_indices(rng, total)
+	var roster := _build_roster(pool, total, rng)
+	var chosen_player := _resolve_player_character(player_pool, roster, rng)
 
-	print("战局开始：%d 名参战者（出生点 %d 个）" % [alive_fighters.size(), spawn_total])
+	var slot: int = clampi(player_slot_index, 0, total - 1)
+	var ai_no: int = 0
+	for i in total:
+		if i == slot:
+			_spawn_fighter(spawn_indices[i], chosen_player, true, "Player")
+		else:
+			ai_no += 1
+			_spawn_fighter(spawn_indices[i], roster[i], false, "AI_%d" % ai_no)
+
+	print("战局开始：%d 名参战者｜地图出生点 %d 个｜随机种子 %d" % [total, spawn_total, rng.seed])
+	print("出生点顺序：", spawn_indices)
+	print("出场角色：", _character_names(roster))
+
+
+## 选出本局使用的出生点索引；人数超过出生点数时循环复用
+func _pick_spawn_indices(rng: RandomNumberGenerator, count: int) -> Array[int]:
+	var result: Array[int] = []
+	var spawn_total: int = current_map.get_spawn_count()
+
+	if spawn_total <= 0:
+		# 地图一个出生点都没放：全部落在原点，至少不会崩
+		for i in count:
+			result.append(0)
+		return result
+
+	var order: Array[int] = []
+	if randomize_spawn_points:
+		order = _shuffled_range(spawn_total, rng)
+	else:
+		for i in spawn_total:
+			order.append(i)
+
+	var cursor: int = 0
+	while result.size() < count:
+		result.append(order[cursor % order.size()])
+		cursor += 1
+	return result
+
+
+## 用指定随机源洗牌后循环取用：保证每种角色都能上场，人数多于角色种类时才重复
+func _build_roster(pool: Array[CharacterData], count: int, rng: RandomNumberGenerator) -> Array[CharacterData]:
+	var order := _shuffled_range(pool.size(), rng)
+	var roster: Array[CharacterData] = []
+	for i in count:
+		roster.append(pool[order[i % order.size()]])
+	return roster
+
+
+func _character_names(roster: Array[CharacterData]) -> String:
+	var names: Array[String] = []
+	for data in roster:
+		names.append(data.character_name)
+	return ", ".join(names)
+
+
+## 玩家可选角色池：优先用本场景配的 player_character_pool，留空则与 AI 角色表共用
+func _resolve_player_pool(shared_pool: Array[CharacterData]) -> Array[CharacterData]:
+	var pool: Array[CharacterData] = []
+	for item in player_character_pool:
+		if item:
+			pool.append(item)
+	if not pool.is_empty():
+		return pool
+	return shared_pool
+
+
+## 玩家角色解析优先级：
+##   1. MatchConfig.select_character() 选定的    —— 外部接口
+##   2. 本场景的 player_character 导出项         —— 目前在 Godot 里选
+##   3. 从玩家角色池随机
+func _resolve_player_character(player_pool: Array[CharacterData], roster: Array[CharacterData], rng: RandomNumberGenerator) -> CharacterData:
+	if MatchConfig.has_selection():
+		var external: CharacterData = MatchConfig.selected_character
+		print("玩家角色：", external.character_name, "（来源：外部接口 MatchConfig）")
+		return external
+
+	if player_character:
+		print("玩家角色：", player_character.character_name, "（来源：战局场景 player_character）")
+		return player_character
+
+	var fallback: CharacterData = roster[0]
+	if not player_pool.is_empty():
+		fallback = player_pool[rng.randi_range(0, player_pool.size() - 1)]
+	print("玩家角色：", fallback.character_name, "（来源：玩家角色池随机）")
+	return fallback
+
+
+## 用指定随机源打乱 0..count-1
+func _shuffled_range(count: int, rng: RandomNumberGenerator) -> Array[int]:
+	var result: Array[int] = []
+	for i in count:
+		result.append(i)
+	for i in range(result.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var swap := result[i]
+		result[i] = result[j]
+		result[j] = swap
+	return result
 
 
 ## 生成一名参战者并挂上对应的大脑
-func _spawn_fighter(spawn_index: int, is_player: bool, node_name: String) -> void:
+func _spawn_fighter(spawn_index: int, data: CharacterData, is_player: bool, node_name: String) -> void:
 	var body := CHARACTER_SCENE.instantiate() as CharacterBody2D
 
 	# 位置必须在入树之前设好：两个 CharacterBody2D 在同一坐标注册，
@@ -145,7 +315,7 @@ func _spawn_fighter(spawn_index: int, is_player: bool, node_name: String) -> voi
 	add_child(body)
 	body.add_to_group("fighter")
 
-	body.apply_data(fighter_data if fighter_data else DEFAULT_FIGHTER_DATA)
+	body.apply_data(data)
 
 	if is_player:
 		player_instance = body
