@@ -20,7 +20,7 @@ const DEFAULT_TOUCH_CONTROLS: PackedScene = preload("res://scenes/ui/touch_contr
 
 ## 角色资源目录：character_pool 留空时自动扫描这里，新增角色资源即可自动加入角色表
 const CHARACTER_DIR := "res://resources/characters"
-## 兜底角色：连目录都扫不到时至少还能开局
+## 兜底角色（test）：默认不进随机池，只有随机池里一个能用的角色都没有时才出场
 const FALLBACK_CHARACTER: CharacterData = preload("res://resources/characters/test.tres")
 
 @export_group("战局配置")
@@ -30,6 +30,9 @@ const FALLBACK_CHARACTER: CharacterData = preload("res://resources/characters/te
 @export_group("出场名单")
 ## 可随机出场的角色表（AI 用）；留空则自动扫描 CHARACTER_DIR 下的全部角色资源
 @export var character_pool: Array[CharacterData] = []
+## 不想进随机池的角色。只在自动扫描时生效；显式配了 character_pool 就完全以它为准。
+## 手里有还没调好的新角色时，把它拖进来就能先不让它出场。
+@export var excluded_characters: Array[CharacterData] = []
 ## 玩家可选角色池；留空则与上面的角色表共用
 @export var player_character_pool: Array[CharacterData] = []
 ## 玩家出场的角色（目前先在这里选）；留空则从玩家角色池随机。
@@ -127,8 +130,9 @@ func setup_touch_controls() -> void:
 
 ## 解析角色表：
 ##   1. 检视面板里配了 character_pool 就直接用（完全按你的意思来，不做过滤）；
-##   2. 否则扫描 CHARACTER_DIR，只收「能打且看得见」的角色，其余打印出来说明原因；
-##   3. 一个都没有时回退到 FALLBACK_CHARACTER。
+##   2. 否则扫描 CHARACTER_DIR，只收「能打、看得见、且没被排除」的角色，其余打印原因；
+##      兜底角色 test 默认不进随机池，只有随机池空了才会出场；
+##   3. 随机池一个都没有时回退到 FALLBACK_CHARACTER。
 ## 过滤条件很直白：没有 basic_attack 的角色出不了拳，没有 sprite_texture 的角色在场上隐形，
 ## 两者都会让新角色看着像 bug，所以默认先挡在外面；想强行启用就往 character_pool 里拖。
 func resolve_character_pool() -> Array[CharacterData]:
@@ -158,13 +162,19 @@ func resolve_character_pool() -> Array[CharacterData]:
 			if data.sprite_texture == null:
 				skipped.append("%s(缺贴图)" % data.character_name)
 				continue
+			if data == FALLBACK_CHARACTER:
+				skipped.append("%s(兜底角色)" % data.character_name)
+				continue
+			if excluded_characters.has(data):
+				skipped.append("%s(已排除)" % data.character_name)
+				continue
 			pool.append(data)
 
 	if not skipped.is_empty():
-		print("跳过资料不全的角色：", ", ".join(skipped))
+		print("随机池未收录：", ", ".join(skipped))
 
 	if pool.is_empty():
-		push_warning("没有扫描到可用角色，回退到 %s。" % FALLBACK_CHARACTER.character_name)
+		push_warning("随机池里没有可用角色，回退到兜底角色 %s。" % FALLBACK_CHARACTER.character_name)
 		pool.append(FALLBACK_CHARACTER)
 	return pool
 

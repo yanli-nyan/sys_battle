@@ -4,3 +4,4 @@
 
 [resource]
 script = ExtResource("1_gama4")
+skill_name = "太阳"

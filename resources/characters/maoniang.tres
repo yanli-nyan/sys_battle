@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://df1hblm0p1rjn" path="res://scenes/characters/character_data.gd" id="2_7ibsm"]
 [ext_resource type="Script" uid="uid://b0r7uh08888jn" path="res://scenes/characters/basic_attack_data.gd" id="2_wj7jg"]
 [ext_resource type="Texture2D" uid="uid://bi8b1jutb6li3" path="res://resources/texture/characters/猫娘.png" id="4_wj7jg"]
+[ext_resource type="Resource" path="res://resources/skills/reverse_shot.tres" id="5_skill"]
 
 [sub_resource type="Resource" id="Resource_asjwg"]
 script = ExtResource("2_wj7jg")
@@ -14,4 +15,5 @@ script = ExtResource("2_7ibsm")
 character_name = "maoniang"
 sprite_texture = ExtResource("4_wj7jg")
 basic_attack = SubResource("Resource_asjwg")
+active_skills = Array[ExtResource("1_t0n52")]([ExtResource("5_skill")])
 metadata/_custom_type_script = "uid://df1hblm0p1rjn"

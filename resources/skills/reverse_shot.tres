@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ProjectileSkill" format=3]
+
+[ext_resource type="Script" path="res://scripts/skills/projectile_skill.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+skill_name = "乱向弹"
+cooldown = 6.0
+speed = 700.0
+max_range = 600.0
+hit_radius = 8.0
+spawn_offset = 26.0
+projectile_color = Color(1, 0.55, 0.85, 1)
+modifier_multiplier = -1.0
+modifier_duration = 2.5

@@ -17,7 +17,7 @@ const SPAWN_POINTS_NODE_NAME := "SpawnPoints"
 ## 地图显示名，用于 UI 与调试输出
 @export var display_name: String = "未命名地图"
 ## 本图建议的最大参战人数（出生点不足时会循环复用，不会报错）
-@export var capacity: int = 8
+@export var capacity: int = 9
 
 @export_group("战场边界")
 ## 手工指定边界（地图局部坐标）。留空（size 为 0）时自动从地形推算。
