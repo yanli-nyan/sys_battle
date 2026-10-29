@@ -14,6 +14,8 @@ const MOD_MOVE_SPEED := &"move_speed"
 const MOD_ATTACK_POWER := &"attack_power"
 ## 普攻判定盒半径倍率（即攻击距离）
 const MOD_ATTACK_RANGE := &"attack_range"
+## 生命上限倍率（> 1 即抬高上限，并同步补足等量的当前血量）
+const MOD_MAX_HP := &"max_hp"
 
 ## 受击盒所在的物理层掩码（Layer 3: Hurtbox）
 const HURTBOX_MASK := 4
@@ -32,6 +34,19 @@ func update_cooldown(delta: float) -> void:
 
 func is_ready() -> bool:
 	return _current_cooldown <= 0.0
+
+
+## 还剩多少秒可用；已就绪时返回 0。给 HUD 的数字倒计时用。
+func get_cooldown_remaining() -> float:
+	return maxf(_current_cooldown, 0.0)
+
+
+## 冷却进度 0.0~1.0：1.0 表示刚施放、0.0 表示已就绪。给 HUD 的转圈遮罩用。
+## cooldown 配置为 0 或负值时永远返回 0，避免除零。
+func get_cooldown_ratio() -> float:
+	if cooldown <= 0.0:
+		return 0.0
+	return clampf(_current_cooldown / cooldown, 0.0, 1.0)
 
 
 func try_cast(caster: CharacterBody2D, aim_dir: Vector2) -> bool:

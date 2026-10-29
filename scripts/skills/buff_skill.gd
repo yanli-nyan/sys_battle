@@ -10,6 +10,7 @@ enum Stat {
 	MOVE_SPEED,      ## 移动速度
 	ATTACK_POWER,    ## 攻击力（普攻与技能伤害一起提升）
 	ATTACK_RANGE,    ## 普攻距离（判定盒半径）
+	MAX_HP,          ## 生命上限（连同当前血量一起补足）
 }
 
 @export_group("强化自己")
@@ -35,5 +36,7 @@ func _modifier_key() -> StringName:
 			return MOD_ATTACK_POWER
 		Stat.ATTACK_RANGE:
 			return MOD_ATTACK_RANGE
+		Stat.MAX_HP:
+			return MOD_MAX_HP
 		_:
 			return MOD_MOVE_SPEED

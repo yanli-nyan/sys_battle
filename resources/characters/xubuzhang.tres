@@ -8,11 +8,19 @@
 
 [sub_resource type="Resource" id="Resource_yjxxd"]
 script = ExtResource("3_aed2v")
+combo_count = 2
+combo_reset_time = 1.10
+damages = Array[int]([15, 37])
+attack_rate = 0.88
 metadata/_custom_type_script = "uid://b0r7uh08888jn"
 
 [resource]
 script = ExtResource("2_uv674")
 character_name = "xubuzhang"
+max_hp = 146
+move_speed = 162.0
+hitbox_radius = 24.0
+hurtbox_radius = 16.0
 sprite_texture = ExtResource("5_aed2v")
 basic_attack = SubResource("Resource_yjxxd")
 active_skills = Array[ExtResource("1_a37ic")]([ExtResource("2_gx7xy")])

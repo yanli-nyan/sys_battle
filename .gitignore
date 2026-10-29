@@ -21,6 +21,7 @@ dist/
 Thumbs.db
 .DS_Store
 raw_assets/
+balance_result.txt
 .dsh/
 
 # Mono / C# 编译产物（仅在使用 C# 时需要）

@@ -8,4 +8,4 @@ stat = 1
 multiplier = 1.8
 aura_color = Color(1, 0.5, 0.3, 0.8)
 skill_name = "战意"
-cooldown = 10
+cooldown = 12.0

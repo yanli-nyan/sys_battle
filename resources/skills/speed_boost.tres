@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_script")
 skill_name = "疾行"
-cooldown = 8
+cooldown = 11.0
 stat = 0
 multiplier = 1.6
-duration = 4
+duration = 3.5
 aura_color = Color(0.4, 1, 0.55, 0.8)

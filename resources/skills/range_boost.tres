@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 skill_name = "长驱"
-cooldown = 10
+cooldown = 13.0
 stat = 2
 multiplier = 1.8
 duration = 5

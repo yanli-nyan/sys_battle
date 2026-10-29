@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 skill_name = "枯荣领域"
-cooldown = 25.0
+cooldown = 22.0
 radius = 230.0
 damage_per_tick = 4
 tick_interval = 1.0

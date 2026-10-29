@@ -8,11 +8,19 @@
 
 [sub_resource type="Resource" id="Resource_asjwg"]
 script = ExtResource("2_wj7jg")
+combo_count = 3
+combo_reset_time = 0.75
+damages = Array[int]([10, 10, 21])
+attack_rate = 0.44
 metadata/_custom_type_script = "uid://b0r7uh08888jn"
 
 [resource]
 script = ExtResource("2_7ibsm")
 character_name = "maoniang"
+max_hp = 150
+move_speed = 168.0
+hitbox_radius = 22.0
+hurtbox_radius = 14.0
 sprite_texture = ExtResource("4_wj7jg")
 basic_attack = SubResource("Resource_asjwg")
 active_skills = Array[ExtResource("1_t0n52")]([ExtResource("5_skill")])

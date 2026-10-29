@@ -211,10 +211,11 @@ func spawn_match() -> void:
 		rng.randomize()
 
 	var spawn_indices := _pick_spawn_indices(rng, total)
-	var roster := _build_roster(pool, total, rng)
-	var chosen_player := _resolve_player_character(player_pool, roster, rng)
-
 	var slot: int = clampi(player_slot_index, 0, total - 1)
+	# 先定玩家角色，再排 AI 名单：玩家这一局用的角色不会落到任何 AI 身上
+	var chosen_player := _resolve_player_character(player_pool, rng)
+	var roster := _build_roster(pool, total, rng, [chosen_player], slot)
+	roster[slot] = chosen_player
 	var ai_no: int = 0
 	for i in total:
 		if i == slot:
@@ -225,7 +226,7 @@ func spawn_match() -> void:
 
 	print("战局开始：%d 名参战者｜地图出生点 %d 个｜随机种子 %d" % [total, spawn_total, rng.seed])
 	print("出生点顺序：", spawn_indices)
-	print("出场角色：", _character_names(roster))
+	print("出场角色：", _character_names(roster), "（第 %d 位是玩家）" % slot)
 
 
 ## 选出本局使用的出生点索引；人数超过出生点数时循环复用
@@ -253,19 +254,39 @@ func _pick_spawn_indices(rng: RandomNumberGenerator, count: int) -> Array[int]:
 	return result
 
 
-## 用指定随机源洗牌后循环取用：保证每种角色都能上场，人数多于角色种类时才重复
-func _build_roster(pool: Array[CharacterData], count: int, rng: RandomNumberGenerator) -> Array[CharacterData]:
-	var order := _shuffled_range(pool.size(), rng)
+## 排 AI 名单：洗牌后循环取用，保证每种角色都能上场，人数多于角色种类时才重复。
+## exclude 里的角色（玩家这一局用的）一律不排给 AI；skip_index 是玩家自己占的槽位，
+## 那个位置留空（由调用方填玩家角色），不消耗 AI 名额。
+func _build_roster(pool: Array[CharacterData], count: int, rng: RandomNumberGenerator, exclude: Array[CharacterData] = [], skip_index: int = -1) -> Array[CharacterData]:
 	var roster: Array[CharacterData] = []
+	roster.resize(count)
+
+	var candidates: Array[CharacterData] = []
+	for data in pool:
+		if data and not exclude.has(data):
+			candidates.append(data)
+	if candidates.is_empty():
+		# 角色表里除了玩家这一局用的之外没别人了，只能让 AI 用同款，否则场上凑不够人
+		if not exclude.is_empty():
+			push_warning("随机池除玩家角色外没有别的角色，AI 会使用同名角色。")
+			candidates = exclude.duplicate()
+	if candidates.is_empty():
+		return roster
+
+	var order := _shuffled_range(candidates.size(), rng)
+	var cursor: int = 0
 	for i in count:
-		roster.append(pool[order[i % order.size()]])
+		if i == skip_index:
+			continue
+		roster[i] = candidates[order[cursor % order.size()]]
+		cursor += 1
 	return roster
 
 
 func _character_names(roster: Array[CharacterData]) -> String:
 	var names: Array[String] = []
 	for data in roster:
-		names.append(data.character_name)
+		names.append(data.character_name if data else "-")
 	return ", ".join(names)
 
 
@@ -284,7 +305,7 @@ func _resolve_player_pool(shared_pool: Array[CharacterData]) -> Array[CharacterD
 ##   1. MatchConfig.select_character() 选定的    —— 外部接口
 ##   2. 本场景的 player_character 导出项         —— 目前在 Godot 里选
 ##   3. 从玩家角色池随机
-func _resolve_player_character(player_pool: Array[CharacterData], roster: Array[CharacterData], rng: RandomNumberGenerator) -> CharacterData:
+func _resolve_player_character(player_pool: Array[CharacterData], rng: RandomNumberGenerator) -> CharacterData:
 	if MatchConfig.has_selection():
 		var external: CharacterData = MatchConfig.selected_character
 		print("玩家角色：", external.character_name, "（来源：外部接口 MatchConfig）")
@@ -294,11 +315,13 @@ func _resolve_player_character(player_pool: Array[CharacterData], roster: Array[
 		print("玩家角色：", player_character.character_name, "（来源：战局场景 player_character）")
 		return player_character
 
-	var fallback: CharacterData = roster[0]
 	if not player_pool.is_empty():
-		fallback = player_pool[rng.randi_range(0, player_pool.size() - 1)]
-	print("玩家角色：", fallback.character_name, "（来源：玩家角色池随机）")
-	return fallback
+		var picked: CharacterData = player_pool[rng.randi_range(0, player_pool.size() - 1)]
+		print("玩家角色：", picked.character_name, "（来源：玩家角色池随机）")
+		return picked
+
+	print("玩家角色：", FALLBACK_CHARACTER.character_name, "（来源：兜底角色，玩家角色池为空）")
+	return FALLBACK_CHARACTER
 
 
 ## 用指定随机源打乱 0..count-1

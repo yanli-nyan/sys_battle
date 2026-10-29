@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="LifestealAOESkill" format=3]
+
+[ext_resource type="Script" path="res://scripts/skills/lifesteal_aoe_skill.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+radius = 220.0
+damage = 20
+lifesteal_ratio = 0.6
+wave_color = Color(1, 0.62, 0.86, 0.7)
+skill_name = "脑力虹吸"
+cooldown = 12.0

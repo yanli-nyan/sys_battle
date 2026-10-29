@@ -1,19 +1,27 @@
 [gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://cydu5biraqytw"]
 
 [ext_resource type="Script" uid="uid://dc502nyvkuryi" path="res://scripts/skills/skill_data.gd" id="1_4filr"]
-[ext_resource type="Resource" uid="uid://djam083k1chbp" path="res://resources/skills/attack_boost.tres" id="2_jwgjr"]
+[ext_resource type="Resource" path="res://resources/skills/slow_field.tres" id="2_slow"]
 [ext_resource type="Script" uid="uid://df1hblm0p1rjn" path="res://scenes/characters/character_data.gd" id="2_s0kyq"]
 [ext_resource type="Script" uid="uid://b0r7uh08888jn" path="res://scenes/characters/basic_attack_data.gd" id="3_u3fss"]
 [ext_resource type="Texture2D" uid="uid://lnkuql5lq1dj" path="res://resources/texture/characters/肖时海.png" id="4_jwgjr"]
 
 [sub_resource type="Resource" id="Resource_xe5s4"]
 script = ExtResource("3_u3fss")
+combo_count = 3
+combo_reset_time = 0.90
+damages = Array[int]([15, 15, 28])
+attack_rate = 0.64
 metadata/_custom_type_script = "uid://b0r7uh08888jn"
 
 [resource]
 script = ExtResource("2_s0kyq")
 character_name = "xiaoshihai"
+max_hp = 156
+move_speed = 156.0
+hitbox_radius = 23.0
+hurtbox_radius = 15.0
 sprite_texture = ExtResource("4_jwgjr")
 basic_attack = SubResource("Resource_xe5s4")
-active_skills = Array[ExtResource("1_4filr")]([ExtResource("2_jwgjr")])
+active_skills = Array[ExtResource("1_4filr")]([ExtResource("2_slow")])
 metadata/_custom_type_script = "uid://df1hblm0p1rjn"

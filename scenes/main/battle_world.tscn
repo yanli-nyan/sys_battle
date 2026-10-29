@@ -1,11 +1,9 @@
 [gd_scene format=3 uid="uid://dklftj3ym7jcb"]
 
 [ext_resource type="Script" uid="uid://vfyouimje3by" path="res://scenes/main/battle_world.gd" id="1_bw"]
-[ext_resource type="Resource" uid="uid://boehj8veinkqv" path="res://resources/characters/guoshu.tres" id="2_xe5s4"]
 
 [node name="BattleWorld" type="Node2D" unique_id=1675256990]
 script = ExtResource("1_bw")
-player_character = ExtResource("2_xe5s4")
 
 [node name="MapRoot" type="Node2D" parent="." unique_id=263118576]
 
