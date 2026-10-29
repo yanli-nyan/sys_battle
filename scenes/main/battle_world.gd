@@ -18,6 +18,9 @@ const DEFAULT_MAP_SCENE: PackedScene = preload("res://scenes/maps/arena_test.tsc
 ## 默认触控 UI：地图没有自带覆盖时使用
 const DEFAULT_TOUCH_CONTROLS: PackedScene = preload("res://scenes/ui/touch_controls.tscn")
 
+## 技能冷却 HUD：纯代码绘制，运行时实例化挂到 UILayer，PC 与移动端共用一套
+const SKILL_HUD_SCRIPT: GDScript = preload("res://scenes/ui/skill_cooldown_hud.gd")
+
 ## 角色资源目录：character_pool 留空时自动扫描这里，新增角色资源即可自动加入角色表
 const CHARACTER_DIR := "res://resources/characters"
 ## 兜底角色（test）：默认不进随机池，只有随机池里一个能用的角色都没有时才出场
@@ -53,6 +56,7 @@ const FALLBACK_CHARACTER: CharacterData = preload("res://resources/characters/te
 
 @onready var map_root: Node2D = $MapRoot
 @onready var touch_layer: CanvasLayer = $TouchLayer
+@onready var ui_layer: CanvasLayer = $UILayer
 @onready var game_over_panel: PanelContainer = $UILayer/GameOverPanel
 @onready var result_label: Label = $UILayer/GameOverPanel/VBoxContainer/ResultLabel
 @onready var restart_button: Button = $UILayer/GameOverPanel/VBoxContainer/RestartButton
@@ -62,6 +66,7 @@ var current_map: GameMap = null
 var touch_controls: TouchControls = null
 var player_instance: CharacterBody2D = null
 var player_brain: PlayerController = null
+var skill_hud: Control = null
 
 var alive_fighters: Array[CharacterBody2D] = []
 var is_match_over: bool = false
@@ -72,6 +77,11 @@ func _ready() -> void:
 	load_map()
 	setup_touch_controls()
 	spawn_match()
+
+
+func _process(_delta: float) -> void:
+	# HUD 每帧读一次玩家冷却状态；战局结束后传 null 由 HUD 自行隐藏
+	_refresh_skill_hud()
 
 
 # ---------- 地图装配 ----------
@@ -374,6 +384,53 @@ func _setup_player_brain(body: CharacterBody2D) -> void:
 	# 触控输入接线（必须在玩家大脑就绪之后）
 	_wire_touch_controls()
 
+	# 技能冷却 HUD：数据由本函数注入，HUD 自己不去反查角色，保持 UI 与角色解耦
+	_setup_skill_hud()
+
+
+## 装配技能冷却 HUD：挂到 UILayer。
+## 位置锚在屏幕底部居中（横向），避开左下摇杆（摇杆占 x 70~330、y -290~-30）
+## 与右下攻击/技能键（ActionButtons 在 x -400~-60）。PC 端没有触控层，同样可见。
+func _setup_skill_hud() -> void:
+	if skill_hud != null and is_instance_valid(skill_hud):
+		skill_hud.queue_free()
+
+	var hud: Control = SKILL_HUD_SCRIPT.new() as Control
+	hud.name = "SkillHud"
+	hud.anchor_left = 0.5
+	hud.anchor_top = 1.0
+	hud.anchor_right = 0.5
+	hud.anchor_bottom = 1.0
+	hud.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	hud.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	hud.offset_left = -120.0
+	hud.offset_top = -100.0
+	hud.offset_right = 120.0
+	hud.offset_bottom = -28.0
+	ui_layer.add_child(hud)
+	skill_hud = hud
+
+
+## 每帧把玩家角色灌给两处冷却显示：
+##   * 桌面/移动端通用的底部 HUD（skill_hud）
+##   * 移动端技能按钮上的遮罩（由 TouchControls 内部持有）
+## 战局结算后传 null，两处都会自行隐藏。
+func _refresh_skill_hud() -> void:
+	var target: Node = null
+	if is_match_over:
+		target = null
+	elif player_instance != null and is_instance_valid(player_instance) and player_instance.current_hp > 0:
+		target = player_instance
+
+	# 移动端（触控层可见）用技能按钮上的遮罩就够了，不再叠底部 HUD，避免两处重复显示
+	var use_button_overlay: bool = touch_controls != null and is_instance_valid(touch_controls) and touch_controls.visible
+
+	if skill_hud != null and is_instance_valid(skill_hud) and skill_hud.has_method("set_character"):
+		skill_hud.set_character(null if use_button_overlay else target)
+
+	if touch_controls != null and is_instance_valid(touch_controls) and touch_controls.has_method("set_skill_character"):
+		touch_controls.set_skill_character(target if use_button_overlay else null)
+
 
 func _setup_ai_brain(body: CharacterBody2D) -> void:
 	var ai: AIController = AI_CONTROLLER_SCRIPT.new()
@@ -440,6 +497,10 @@ func _end_game(is_victory: bool) -> void:
 	# 结算后收起触控层，避免误触
 	if touch_controls:
 		touch_controls.set_controls_enabled(false)
+
+	# 结算后把 HUD 收起来，避免胜负已定还盯着冷却看
+	if skill_hud != null and is_instance_valid(skill_hud) and skill_hud.has_method("set_character"):
+		skill_hud.set_character(null)
 
 	game_over_panel.visible = true
 	result_label.text = "战斗胜利！" if is_victory else "败北..."

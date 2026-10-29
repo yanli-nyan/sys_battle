@@ -23,9 +23,16 @@ signal skill_pressed(slot_index: int)
 ## 在非触控设备（PC）上自动隐藏，避免挡住鼠标操作
 @export var auto_hide_on_desktop: bool = true
 
+## 技能按钮上的冷却遮罩脚本（与 PC 端底部 HUD 共用同一套绘制逻辑）
+const COOLDOWN_OVERLAY_SCRIPT: GDScript = preload("res://scenes/ui/skill_cooldown_overlay.gd")
+
 @onready var stick: Control = $Joystick
 @onready var attack_button: Button = $ActionButtons/AttackButton
 @onready var skill_button: Button = $ActionButtons/SkillButton
+
+## 叠在技能按钮上的冷却遮罩；由宿主通过 set_skill_character() 注入角色后才显示
+var _cooldown_overlay: Control = null
+var _overlay_character: Node = null
 
 var _stick_center: Vector2 = Vector2.ZERO
 var _knob_offset: Vector2 = Vector2.ZERO
@@ -47,6 +54,8 @@ func _ready() -> void:
 
 	_stick_center = stick.size * 0.5
 	stick.queue_redraw()
+
+	_setup_cooldown_overlay()
 
 
 func _is_touch_device() -> bool:
@@ -71,6 +80,35 @@ func _on_attack_button_down() -> void:
 
 func _on_skill_button_down() -> void:
 	skill_pressed.emit(0)
+
+
+# ---------- 技能按钮上的冷却遮罩 ----------
+
+## 在技能按钮内侧铺一层冷却遮罩（圆形），让玩家直接在按键上看到「还要等多久」。
+## 遮罩由战局的冷却 HUD 同步注入，因此移动端与 PC 端看到的是同一份冷却状态。
+func _setup_cooldown_overlay() -> void:
+	if _cooldown_overlay != null and is_instance_valid(_cooldown_overlay):
+		_cooldown_overlay.queue_free()
+
+	var overlay: Control = COOLDOWN_OVERLAY_SCRIPT.new() as Control
+	overlay.name = "CooldownOverlay"
+	# 铺满整个按钮；按钮是 120×120 的正方形，遮罩内部按内切圆绘制
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	skill_button.add_child(overlay)
+	_cooldown_overlay = overlay
+
+
+## 注入要显示冷却的角色（通常就是战局里的玩家）；传 null 则隐藏遮罩。
+func set_skill_character(character: Node) -> void:
+	_overlay_character = character
+	if _cooldown_overlay != null and is_instance_valid(_cooldown_overlay):
+		_cooldown_overlay.set_character(character)
+
+
+## 遮罩当前显示的角色（便于调试）
+func get_skill_character() -> Node:
+	return _overlay_character
 
 
 # ---------- 摇杆输入 ----------
