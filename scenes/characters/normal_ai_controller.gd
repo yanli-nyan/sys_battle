@@ -131,8 +131,10 @@ func _attack_reach() -> float:
 		if data != null:
 			hurt = data.hurtbox_radius
 
-	# 留一点余量，避免卡在几何边缘来回抖动
-	_reach_cache = mine.hitbox_radius + hurt + 2.0
+	# 往前提一点，确保判定盒真的能罩住对手：
+	# 双方各有自己的 reach，若都停在「刚好够到」的边缘上，
+	# 帧与帧之间的位移会让命中判定反复落空（实测会在 39.7px 处僵持不下）。
+	_reach_cache = mine.hitbox_radius + hurt - 3.0
 	_reach_target = target
 	return _reach_cache
 
