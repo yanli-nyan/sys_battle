@@ -12,12 +12,19 @@ extends Node
 
 ## 外部选定角色时发出，方便界面即时刷新
 signal selection_changed(character: CharacterData)
+## 外部选定地图时发出，方便选图界面即时刷新
+signal map_changed(map_scene: PackedScene)
 
 ## 外部选定的玩家角色；null 表示没有外部选择
 var selected_character: CharacterData = null
 
+## 外部选定的地图场景；null 表示没有外部选择
+var selected_map: PackedScene = null
+
 ## 本局玩家可选的角色池，由战局每局同步过来，供选人界面等外部系统枚举
 var available_characters: Array[CharacterData] = []
+## 本局可选的地图池，由战局每局同步过来，供选图界面枚举
+var available_maps: Array[PackedScene] = []
 
 
 ## 外部系统选定玩家角色（选人界面点确认时调用）
@@ -57,3 +64,40 @@ func has_selection() -> bool:
 ## 战局每局开头调用：把本局实际可选的玩家角色同步给外部系统
 func publish_available_characters(pool: Array[CharacterData]) -> void:
 	available_characters = pool
+
+
+# ---------- 地图选择 ----------
+
+## 外部系统选定地图（选图界面点确认时调用）
+func select_map(map_scene: PackedScene) -> void:
+	selected_map = map_scene
+	map_changed.emit(map_scene)
+
+
+## 按资源路径选定地图，方便外部脚本或配置用字符串指定；选中返回 true
+func select_map_by_path(path: String) -> bool:
+	if path.is_empty():
+		return false
+	var scene := load(path) as PackedScene
+	if scene == null:
+		push_warning("地图加载失败：%s" % path)
+		return false
+	select_map(scene)
+	return true
+
+
+## 清空外部地图选择，退回「战局里选的 / 池随机」
+func clear_map_selection() -> void:
+	if selected_map == null:
+		return
+	selected_map = null
+	map_changed.emit(null)
+
+
+func has_map_selection() -> bool:
+	return selected_map != null
+
+
+## 战局每局开头调用：把本局实际可选的地图同步给外部系统
+func publish_available_maps(pool: Array[PackedScene]) -> void:
+	available_maps = pool

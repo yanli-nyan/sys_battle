@@ -321,13 +321,22 @@ func get_skill(slot_index: int) -> SkillData:
 
 
 # 技能释放接口
-func cast_active_skill(slot_index: int) -> void:
+## aim 覆盖参数：AI 需要朝目标放技能时直接传方向；
+## 缺省用角色的 aim_direction（玩家控制器与旧调用不变）。
+## 返回是否真的放出去了（冷却中、被出刀挡住都返回 false）。
+func cast_active_skill(slot_index: int, aim: Vector2 = Vector2.INF) -> bool:
 	if is_attacking and not can_cancel_attack:
-		return
+		return false
 	
+	var cast_aim := aim_direction
+	if aim != Vector2.INF:
+		cast_aim = aim
+
 	if slot_index >= 0 and slot_index < runtime_skills.size():
-		if runtime_skills[slot_index].try_cast(self, aim_direction):
+		if runtime_skills[slot_index].try_cast(self, cast_aim):
 			is_attacking = false
+			return true
+	return false
 
 
 # 攻击盒命中了某个受击盒

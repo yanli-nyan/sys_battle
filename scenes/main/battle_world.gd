@@ -11,7 +11,16 @@ extends Node2D
 const CHARACTER_SCENE: PackedScene = preload("res://scenes/characters/base_character.tscn")
 
 const PLAYER_CONTROLLER_SCRIPT: GDScript = preload("res://scenes/characters/player_controller.gd")
-const AI_CONTROLLER_SCRIPT: GDScript = preload("res://scenes/characters/ai_controller.gd")
+
+## AI 难度 → 大脑脚本。新增难度只在这里加一行，并在 scenes/characters/ 下建对应脚本。
+## 脚本必须提供 character / target 两个属性，并自行在 _process 里写 move_direction
+## 与调用 perform_basic_attack()（与 so_easy_ai_controller.gd 同接口）。
+const AI_SCRIPTS: Dictionary = {
+	"SO_EASY": preload("res://scenes/characters/so_easy_ai_controller.gd"),
+	"NORMAL": preload("res://scenes/characters/normal_ai_controller.gd"),
+}
+## ai_difficulty 填了不存在的键时回退到这个难度
+const DEFAULT_AI_DIFFICULTY := "SO_EASY"
 
 ## 默认地图：map_scene 留空时使用
 const DEFAULT_MAP_SCENE: PackedScene = preload("res://scenes/maps/arena_test.tscn")
@@ -23,12 +32,22 @@ const SKILL_HUD_SCRIPT: GDScript = preload("res://scenes/ui/skill_cooldown_hud.g
 
 ## 角色资源目录：character_pool 留空时自动扫描这里，新增角色资源即可自动加入角色表
 const CHARACTER_DIR := "res://resources/characters"
+## 地图目录：map_scene 留空且没走外部接口时自动扫描这里，除兜底图外都能随机出场
+const MAP_DIR := "res://scenes/maps"
 ## 兜底角色（test）：默认不进随机池，只有随机池里一个能用的角色都没有时才出场
 const FALLBACK_CHARACTER: CharacterData = preload("res://resources/characters/test.tres")
 
 @export_group("战局配置")
-## 本局要加载的地图场景；留空则使用 DEFAULT_MAP_SCENE
+## 本局要加载的地图场景；留空则由「地图随机池」抽（或在不配池时用 DEFAULT_MAP_SCENE）。
+## 外部系统也可以用 MatchConfig.select_map() 指定，优先级高于本项。
 @export var map_scene: PackedScene
+## 可随机出场的地图池（PackedScene 数组）；留空则自动扫描 MAP_DIR 下的全部地图。
+## 只有一张地图时行为与前一刻完全一致，不会引入随机性。
+@export var map_pool: Array[PackedScene] = []
+## 不想进随机池的地图。只在自动扫描时生效；配了 map_pool 就完全以它为准。
+@export var excluded_maps: Array[PackedScene] = []
+## 地图是否随机挑选；关掉则按 map_pool / 扫描顺序取第一张
+@export var randomize_map: bool = true
 
 @export_group("出场名单")
 ## 可随机出场的角色表（AI 用）；留空则自动扫描 CHARACTER_DIR 下的全部角色资源
@@ -49,6 +68,12 @@ const FALLBACK_CHARACTER: CharacterData = preload("res://resources/characters/te
 @export var randomize_spawn_points: bool = true
 ## 随机种子：0 表示每局重新随机；填固定值可复现同一套出场名单
 @export var random_seed: int = 0
+
+@export_group("AI")
+## AI 难度：可选值来自 AI_SCRIPTS 的键（当前仅 SO_EASY）。
+## 新增难度的步骤：① 复制 so_easy_ai_controller.gd 改名并换 class_name；
+## ② 在 AI_SCRIPTS 里加一行 "难度名": preload(...)；③ 这里就能直接选到。
+@export var ai_difficulty: String = DEFAULT_AI_DIFFICULTY
 
 @export_group("相机")
 ## 玩家相机缩放（适配 32×32 像素网格）
@@ -86,13 +111,18 @@ func _process(_delta: float) -> void:
 
 # ---------- 地图装配 ----------
 
-## 把地图场景装进 MapRoot
+## 把地图场景装进 MapRoot。
+## 解析优先级：
+##   1. MatchConfig.select_map() 指定的       —— 外部接口（选图界面等）
+##   2. 本场景的 map_scene 导出项            —— 在 Godot 里直接指定
+##   3. 地图池随机 / 顺序取第一张             —— map_pool 或自动扫描 MAP_DIR
+##   4. DEFAULT_MAP_SCENE                    —— 兜底
 func load_map() -> void:
 	for child in map_root.get_children():
 		map_root.remove_child(child)
 		child.queue_free()
 
-	var scene: PackedScene = map_scene if map_scene else DEFAULT_MAP_SCENE
+	var scene := _resolve_map_scene()
 	if scene == null:
 		push_error("战局没有可加载的地图场景。")
 		return
@@ -104,6 +134,78 @@ func load_map() -> void:
 		push_warning("地图 %s 的根节点没有挂载 game_map.gd，出生点与边界将退化为默认行为。" % instance.name)
 	else:
 		print("战局地图：", current_map.display_name, "｜出生点 ", current_map.get_spawn_count(), " 个")
+
+
+## 按优先级决定本局用哪张地图
+func _resolve_map_scene() -> PackedScene:
+	# 1. 外部接口优先
+	if MatchConfig.has_map_selection() and MatchConfig.selected_map != null:
+		print("地图来源：外部接口 MatchConfig")
+		return MatchConfig.selected_map
+
+	# 2. 场景里显式配的
+	if map_scene != null:
+		print("地图来源：战局场景 map_scene")
+		return map_scene
+
+	# 3. 地图池
+	var pool := _resolve_map_pool()
+	if not pool.is_empty():
+		var index := 0
+		if randomize_map and pool.size() > 1:
+			# 用同一套随机种子规则，填了固定 seed 就能复现同一张图
+			var rng := RandomNumberGenerator.new()
+			if random_seed != 0:
+				rng.seed = random_seed
+			else:
+				rng.randomize()
+			index = rng.randi_range(0, pool.size() - 1)
+		print("地图来源：地图池随机（%d 选 1）" % pool.size())
+		return pool[index]
+
+	# 4. 兜底
+	print("地图来源：默认地图")
+	return DEFAULT_MAP_SCENE
+
+
+## 解析地图池：显式配了 map_pool 就用它（完全按配置来，不做过滤），
+## 否则扫描 MAP_DIR，排除 excluded_maps 与兜底图。
+func _resolve_map_pool() -> Array[PackedScene]:
+	var pool: Array[PackedScene] = []
+	for item in map_pool:
+		if item != null:
+			pool.append(item)
+	if not pool.is_empty():
+		return pool
+
+	var dir := DirAccess.open(MAP_DIR)
+	if dir == null:
+		push_warning("地图目录 %s 打不开，回退到默认地图。" % MAP_DIR)
+		return pool
+
+	var skipped: Array[String] = []
+	var names := dir.get_files()
+	names.sort()
+	for file_name in names:
+		# 导出后 .tscn 会被改写成 .scn 或带 .remap 后缀，这里都认
+		var clean := file_name.trim_suffix(".remap")
+		if not (clean.ends_with(".tscn") or clean.ends_with(".scn")):
+			continue
+		var path := MAP_DIR.path_join(clean)
+		var scene := load(path) as PackedScene
+		if scene == null:
+			continue
+		if scene == DEFAULT_MAP_SCENE:
+			skipped.append("%s(兜底地图)" % clean)
+			continue
+		if excluded_maps.has(scene):
+			skipped.append("%s(已排除)" % clean)
+			continue
+		pool.append(scene)
+
+	if not skipped.is_empty():
+		print("地图池未收录：", ", ".join(skipped))
+	return pool
 
 
 # ---------- 触控 UI 装配 ----------
@@ -207,6 +309,8 @@ func spawn_match() -> void:
 	print("玩家角色池：", _character_names(player_pool), "（", player_pool.size(), " 种）")
 	# 把本局可选的玩家角色同步给外部系统（选人界面等）
 	MatchConfig.publish_available_characters(player_pool)
+	# 地图池同理：选图界面可以从 MatchConfig.available_maps 枚举
+	MatchConfig.publish_available_maps(_resolve_map_pool())
 
 	var total: int = maxi(fighter_count, 1)
 	var spawn_total: int = current_map.get_spawn_count()
@@ -436,10 +540,23 @@ func _refresh_skill_hud() -> void:
 		touch_controls.set_skill_character(target if use_button_overlay else null)
 
 
+## 按 ai_difficulty 选脚本实例化 AI 大脑。
+## 走 Dictionary + preload 而不是 if/elif，新增难度不需要改这个函数。
 func _setup_ai_brain(body: CharacterBody2D) -> void:
-	var ai: AIController = AI_CONTROLLER_SCRIPT.new()
-	ai.name = "AIController"
+	var difficulty := ai_difficulty
+	if not AI_SCRIPTS.has(difficulty):
+		push_warning("未知 AI 难度 \"%s\"，回退到 %s。" % [difficulty, DEFAULT_AI_DIFFICULTY])
+		difficulty = DEFAULT_AI_DIFFICULTY
+
+	var script: GDScript = AI_SCRIPTS[difficulty]
+	var ai: Node2D = script.new()
+	ai.name = "AIBrain_%s" % difficulty
+	ai.set_meta("ai_difficulty", difficulty)
 	body.get_node("Brain").add_child(ai)
+
+	# 会寻路的 Brain 需要地图接口；没有 set_map 的（如 SO_EASY）自动跳过
+	if ai.has_method("set_map"):
+		ai.call("set_map", current_map)
 
 
 ## 触控层只抛信号，由战局接线到玩家大脑，保证 UI 与角色解耦

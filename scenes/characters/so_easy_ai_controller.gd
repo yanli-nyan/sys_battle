@@ -1,10 +1,15 @@
-class_name AIController
+class_name SoEasyAIController
 extends Node2D
 
-## AI 大脑：在混战中锁定「最近的其它参战者」，靠近后停下普攻。
+## 【难度：SO_EASY】最朴素的 AI 大脑：锁定「最近的其它参战者」，直线靠近，贴脸后停下平砍。
 ##
-## 目标从 fighter 组里挑，所以 AI 之间也会互相攻击，而不是一起扑向玩家。
-## 出刀前摇、战术撤退、技能释放等留给后续的 AI 升级。
+## 已知弱点（正是这个难度"简单"的来源，也是后续难度要解决的问题）：
+##   * 不会绕墙，被挡住就一直顶着走；
+##   * 不会看地形高度，被高台挡住就原地卡死；
+##   * 从不释放主动技能，也不考虑攻击距离与自身判定盒的实际关系；
+##   * 目标选择只看直线距离，不评估血量、不评估威胁。
+##
+## 升级时不要改这个文件——另建一个 .gd，让 battle_world 通过 ai_difficulty 选过去。
 
 @onready var character: CharacterBody2D = get_parent().get_parent()
 
@@ -50,6 +55,8 @@ func _acquire_target() -> void:
 	for node in get_tree().get_nodes_in_group("fighter"):
 		var other := node as CharacterBody2D
 		if other == null or other == character or not is_instance_valid(other):
+			continue
+		if other.current_hp <= 0:
 			continue
 		var dist := character.global_position.distance_squared_to(other.global_position)
 		if dist < best_dist:
