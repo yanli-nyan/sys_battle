@@ -7,6 +7,11 @@ const ATTACK_WINDOW: float = 0.1
 # 核心数据引用
 @export var character_data: CharacterData
 
+## 地形查询源（GameMap），由宿主在生成角色时注入。
+## 这里只当作一个「能回答 can_move / world_to_cell」的黑盒，
+## 不引用具体类型，也不主动去场景树里反查——保持肉体层不依赖地图结构。
+var terrain: Node = null
+
 # 运行态技能与朝向数据
 var runtime_skills: Array[SkillData] = []
 var aim_direction: Vector2 = Vector2.RIGHT
@@ -23,6 +28,9 @@ var current_combo: int = 0
 var combo_timer: float = 0.0
 ## 距下一次可以出刀还剩多少秒（由 BasicAttackData.attack_rate 决定，见 perform_basic_attack）
 var _attack_cooldown: float = 0.0
+
+## 落地硬直剩余时间（秒），期间不接受移动输入
+var _fall_stun: float = 0.0
 
 ## 临时属性修正（增益 / 减益）。
 ## key -> { 来源实例 id -> { "multiplier": float, "remaining": float } }
@@ -48,6 +56,18 @@ func _ready() -> void:
 		apply_data(character_data)
 	# 监听攻击盒碰触到目标的信号
 	hitbox.area_entered.connect(_on_hitbox_area_entered)
+
+
+## 由宿主（battle_world）注入地形查询源。传 null 表示无地形约束。
+func set_terrain(source: Node) -> void:
+	terrain = source
+
+
+## 当前角色一次能爬升的高度差；没配数据时回退 1
+func get_climb_height() -> int:
+	if character_data == null:
+		return 1
+	return maxi(character_data.climb_height, 0)
 
 func apply_data(data: CharacterData) -> void:
 	character_data = data
@@ -228,10 +248,15 @@ func _physics_process(delta: float) -> void:
 	if _attack_cooldown > 0.0:
 		_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
 
-	# 3. 基础移动与朝向记录（移速受加速 / 减速影响）
+	# 3. 落地硬直推进：硬直期间不接受任何移动输入（坠落与击飞落地共用）
+	if _fall_stun > 0.0:
+		_fall_stun = maxf(0.0, _fall_stun - delta)
+
+	var can_move: bool = _fall_stun <= 0.0
 	var speed: float = character_data.move_speed if character_data else 160.0
 	speed *= get_modifier(SkillData.MOD_MOVE_SPEED)
-	velocity = move_direction.normalized() * speed
+	var desired := move_direction.normalized() * speed if can_move else Vector2.ZERO
+	velocity = _apply_terrain_rules(desired, delta)
 	move_and_slide()
 
 	if move_direction.length_squared() > 0.0:
@@ -362,3 +387,93 @@ func die() -> void:
 	print(name, " 阵亡！")
 	died.emit(self)
 	queue_free()
+
+# ---------- 地形通行约束 ----------
+
+## 按地形高度表裁剪期望速度。没有注入地图时原样返回，行为与改动前完全一致。
+##
+## 规则：
+##   * 单向：只检查「当前格 -> 目标格」这一跳，不看历史；
+##   * 斜向：两个正交邻格必须都能过，否则拆成单轴滑动，避免卡墙角；
+##   * 被挡时不做「穿墙回退」，直接取消该轴速度。
+func _apply_terrain_rules(desired: Vector2, delta: float) -> Vector2:
+	if terrain == null or desired == Vector2.ZERO:
+		return desired
+
+	# 地图接口不全时按「无约束」处理，避免因接口缺失而卡死角色
+	if not (terrain.has_method("world_to_cell") and terrain.has_method("can_move")):
+		return desired
+
+	var here: Vector2i = terrain.world_to_cell(global_position)
+	var step: float = maxf(delta, 0.001)
+	var probe := global_position + desired * step
+
+	# 斜向：拆成 x / y 两个独立轴，分别判定后再组合
+	if absf(desired.x) > 0.01 and absf(desired.y) > 0.01:
+		var slide := Vector2.ZERO
+		var probe_x := global_position + Vector2(desired.x, 0.0) * step
+		if _can_step_to(here, terrain.world_to_cell(probe_x)):
+			slide.x = desired.x
+		var probe_y := global_position + Vector2(0.0, desired.y) * step
+		if _can_step_to(here, terrain.world_to_cell(probe_y)):
+			slide.y = desired.y
+		return slide
+
+	if _can_step_to(here, terrain.world_to_cell(probe)):
+		return desired
+	return Vector2.ZERO
+
+
+## 单跳判定：目标格必须能走。同格视为允许（角色可能还没跨出当前格）。
+## 判为 FALL 时，这一跳仍然放行，但要立刻结算坠落伤害与落地硬直——
+## 本项目没有重力系统（move_and_slide 的 is_on_floor 恒为 false），
+## 所以「落地」只是一个瞬间事件，不模拟空中轨迹。
+func _can_step_to(from_cell: Vector2i, to_cell: Vector2i) -> bool:
+	if to_cell == from_cell:
+		return true
+
+	var result: int = int(terrain.call("get_traversal", from_cell, to_cell, get_climb_height()))
+	if result == GameMap.Traversal.BLOCKED:
+		return false
+	if result == GameMap.Traversal.FALL:
+		var drop: int = terrain.get_elevation(from_cell) - terrain.get_elevation(to_cell)
+		_apply_fall_damage(drop)
+	return true
+
+
+## 坠落结算：按「超出可走下坡的部分」折算伤害，并进入落地硬直。
+## 只结算一次——同一跳里连续调用会被 _fall_stun 挡住。
+func _apply_fall_damage(drop: int) -> void:
+	if _fall_stun > 0.0:
+		return
+
+	# 常量不能通过 Object.get() 读，统一走地图暴露的查询方法。
+	# 缺省回退 1：相差 1 级免费通行，与 GameMap.WALKABLE_DROP 的默认语义一致。
+	var safe_drop: int = 1
+	if terrain and terrain.has_method("get_walkable_drop"):
+		safe_drop = int(terrain.call("get_walkable_drop"))
+	var lethal: int = drop - safe_drop
+	if lethal <= 0:
+		return
+
+	_fall_stun = _fall_stun_from_data()
+
+	var per_level: int = 10
+	if character_data:
+		per_level = character_data.fall_damage_per_level
+	var damage: int = lethal * per_level
+	if damage > 0:
+		take_damage(damage)
+		print(name, " 坠落 ", drop, " 级（超出 ", lethal, " 级）扣 ", damage, " 血")
+
+
+## 落地硬直时长；没有数据时回退 0.35 秒
+func _fall_stun_from_data() -> float:
+	if character_data:
+		return maxf(character_data.fall_stun_time, 0.0)
+	return 0.35
+
+
+## 是否处于落地硬直中
+func is_stunned() -> bool:
+	return _fall_stun > 0.0

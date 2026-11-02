@@ -360,6 +360,10 @@ func _spawn_fighter(spawn_index: int, data: CharacterData, is_player: bool, node
 
 	body.apply_data(data)
 
+	# 地形查询源由宿主注入：肉体层不主动去场景树里找地图
+	if body.has_method("set_terrain"):
+		body.set_terrain(current_map)
+
 	if is_player:
 		player_instance = body
 		body.add_to_group("player")

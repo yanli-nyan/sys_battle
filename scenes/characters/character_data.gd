@@ -7,6 +7,11 @@ extends Resource
 @export var move_speed: float = 160.0
 @export var attack_speed: float = 1.0
 
+@export_group("地形")
+@export var climb_height: int = 1               # 一次能爬升的最大高度差（1=只能上一级台阶）
+@export var fall_damage_per_level: int = 10     # 坠落时每超出 1 级高差造成的伤害
+@export var fall_stun_time: float = 0.0         # 落地硬直（秒）；0 = 不硬直，纯粹扣血就走
+
 @export_group("碰撞体")
 @export var hitbox_radius: float = 18.0        # 普攻判定盒(Hitbox)半径，决定近战攻击距离
 @export var hurtbox_radius: float = 15.0       # 受击盒(Hurtbox)半径，决定被打中的难易程度
