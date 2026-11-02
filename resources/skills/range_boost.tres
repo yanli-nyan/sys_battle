@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_script")
-skill_name = "长驱"
+skill_name = "触手"
 cooldown = 13.0
 stat = 2
 multiplier = 1.8

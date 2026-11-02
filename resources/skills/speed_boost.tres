@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_script")
-skill_name = "疾行"
+skill_name = "咕咕嘎嘎"
 cooldown = 11.0
 stat = 0
 multiplier = 1.6

@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_script")
 stat = 3
-multiplier = 1.5
-duration = 8.0
+multiplier = 1.35
+duration = 4.5
 aura_color = Color(1, 0.62, 0.78, 0.85)
-skill_name = "壮骨"
+skill_name = "骑北极熊"
 cooldown = 14.0

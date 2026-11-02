@@ -14,8 +14,12 @@ const MOD_MOVE_SPEED := &"move_speed"
 const MOD_ATTACK_POWER := &"attack_power"
 ## 普攻判定盒半径倍率（即攻击距离）
 const MOD_ATTACK_RANGE := &"attack_range"
-## 生命上限倍率（> 1 即抬高上限，并同步补足等量的当前血量）
+## 生命上限倍率（> 1 即抬高上限；本项目的上限抬升不补血，只拓宽承伤能力）
 const MOD_MAX_HP := &"max_hp"
+## 受伤倍率（> 1 即承受更多伤害，用于「易伤 / 破甲」类减益）
+const MOD_DAMAGE_TAKEN := &"damage_taken"
+## 攻击速度倍率（> 1 出手更快，< 1 出手变慢）。影响普攻的两次出刀间隔。
+const MOD_ATTACK_SPEED := &"attack_speed"
 
 ## 受击盒所在的物理层掩码（Layer 3: Hurtbox）
 const HURTBOX_MASK := 4

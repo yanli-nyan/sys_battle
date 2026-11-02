@@ -28,6 +28,10 @@ extends SkillData
 @export var modifier_multiplier: float = -1.0
 ## 效果持续时间（秒）
 @export var modifier_duration: float = 2.5
+## 附加易伤：命中后目标在 modifier_duration 内承受的伤害倍率。
+## 1.0 = 不加。纯控制（如移动到反）在 1v1 里收益几乎为零，
+## 补一层易伤才能让投射物技能真正影响战局。
+@export_range(1.0, 2.0, 0.05) var vulnerability_multiplier: float = 1.0
 
 
 func _execute(caster: CharacterBody2D, aim_dir: Vector2) -> void:
@@ -48,6 +52,7 @@ func _execute(caster: CharacterBody2D, aim_dir: Vector2) -> void:
 	bolt.modifier_key = modifier_key
 	bolt.modifier_multiplier = modifier_multiplier
 	bolt.modifier_duration = modifier_duration
+	bolt.vulnerability_multiplier = vulnerability_multiplier
 	# 用技能实例当作修正来源：同一技能多次命中只刷新同一条，不会互相叠乘
 	bolt.modifier_source = self
 

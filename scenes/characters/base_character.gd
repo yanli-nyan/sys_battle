@@ -201,26 +201,28 @@ func _refresh_hitbox_radius() -> void:
 
 
 ## 按「基础上限 × 生命上限倍率」重算血条上限。
-## A 方案：上限抬高时把差额直接补进当前血量（相当于一次只补差额的治疗），
-## 上限回落时把当前血量截断到新上限，避免出现「血比上限还多」的怪状态。
+##
+## 设计立场：上限抬升**不补血**。
+## 早期版本用「上限抬高就把差额补进当前血量」，等价于一次免费治疗，
+## 让壮骨变成「回 50% 血 + 提升血上限」的双重收益，实测把 furui 推到 100% 胜率
+## （198 血的角色一次回 69 点，CD 仅 14 秒）。
+## 现在的语义是纯粹的「承伤能力提升」：血条上限变宽，但当前血量不动；
+## buff 结束时上限回落，当前血量被截断到新上限，不会出现「血比上限多」。
 func _refresh_max_hp() -> void:
 	var base_hp := 100.0
 	if character_data:
 		base_hp = float(character_data.max_hp)
 
 	var new_max: float = base_hp * get_modifier(SkillData.MOD_MAX_HP)
-	var delta := new_max - _current_max_hp
 	_current_max_hp = new_max
 
 	if health_bar:
 		health_bar.max_value = new_max
 
-	if delta > 0.0:
-		# 上限被抬高：把多出来的部分补给当前血量
-		current_hp = clampi(int(round(float(current_hp) + delta)), 0, int(round(new_max)))
-	else:
-		# 上限回落：当前血量不允许超过新上限
-		current_hp = mini(current_hp, int(round(new_max)))
+	# 当前血量只做「不超过新上限」的截断，抬升时不补血
+	current_hp = mini(current_hp, int(round(new_max)))
+	if current_hp > int(round(new_max)):
+		current_hp = int(round(new_max))
 
 	if health_bar:
 		health_bar.value = current_hp
@@ -285,8 +287,10 @@ func perform_basic_attack() -> void:
 		current_combo = 0
 
 	is_attacking = true
-	# 一次挥砍把整个攻速间隔占住，期间 _attack_cooldown 未归零则不会再有新出刀
-	_attack_cooldown = maxf(data.attack_rate, ATTACK_WINDOW)
+	# 一次挥砍把整个攻速间隔占住，期间 _attack_cooldown 未归零则不会再有新出刀。
+	# 间隔要除以攻速倍率：倍率 0.6 表示出手变慢到 1/0.6 ≈ 1.67 倍间隔。
+	var speed_mult: float = get_modifier(SkillData.MOD_ATTACK_SPEED, 1.0)
+	_attack_cooldown = maxf(data.attack_rate / maxf(speed_mult, 0.05), ATTACK_WINDOW)
 
 	# 取出当前连段伤害（含攻击力增益）
 	var damage: int = scale_damage(data.damages[current_combo])
@@ -375,9 +379,16 @@ func heal(amount: int) -> int:
 	return healed
 
 # 承受伤害
+## amount 是「施加方算出的原始伤害」，这里统一乘上受害者自己的受伤倍率
+## （减速/破甲类技能通过 MOD_DAMAGE_TAKEN 挂在这个受害者身上）。
 func take_damage(amount: int, knockback_impulse: Vector2 = Vector2.ZERO) -> void:
-	current_hp = maxi(0, current_hp - amount)
-	print(name, " 受到伤害: ", amount, " | 剩余 HP: ", current_hp)
+	var actual: int = amount
+	var taken_mult: float = get_modifier(SkillData.MOD_DAMAGE_TAKEN, 1.0)
+	if taken_mult != 1.0:
+		actual = maxi(1, int(round(float(amount) * taken_mult)))
+
+	current_hp = maxi(0, current_hp - actual)
+	print(name, " 受到伤害: ", actual, " | 剩余 HP: ", current_hp)
 
 	# 动态刷新血条显示
 	if health_bar:

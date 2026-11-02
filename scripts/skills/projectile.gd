@@ -15,6 +15,11 @@ var modifier_duration: float = 0.0
 ## 修正来源，通常就是发射它的那个技能实例
 var modifier_source: Object = null
 
+## 附加的易伤修正（可选）。设了就让目标在 modifier_duration 内多受伤害，
+## 意义：单纯「让对手走反方向」在 1v1 里几乎无收益（AI 会重新寻路绕回来），
+## 补一层易伤才让投射物类技能具备真正的输出价值。
+var vulnerability_multiplier: float = 1.0
+
 var direction: Vector2 = Vector2.RIGHT
 var speed: float = 700.0
 var max_range: float = 600.0
@@ -98,9 +103,14 @@ func _resolve_hit() -> bool:
 
 
 func _apply_effect(victim: Node) -> void:
-	if modifier_key == &"" or not victim.has_method("apply_modifier"):
+	if not victim.has_method("apply_modifier"):
 		return
-	victim.apply_modifier(modifier_key, modifier_multiplier, modifier_duration, modifier_source)
+	# 主效果（乱向弹 = 移动取反）
+	if modifier_key != &"":
+		victim.apply_modifier(modifier_key, modifier_multiplier, modifier_duration, modifier_source)
+	# 附加易伤：同一个来源，同一条修正，重复命中只刷新不叠加
+	if vulnerability_multiplier > 1.0:
+		victim.apply_modifier(SkillData.MOD_DAMAGE_TAKEN, vulnerability_multiplier, modifier_duration, modifier_source)
 
 
 func _spend() -> void:
