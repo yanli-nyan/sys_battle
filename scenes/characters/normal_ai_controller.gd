@@ -113,6 +113,24 @@ func _acquire_target() -> void:
 var _reach_cache: float = -1.0
 var _reach_target: CharacterBody2D = null
 
+## 不含任何临时修正的基础接战距离。
+## 用于判断「该不该放射程类 buff」——不能用 _attack_reach()，
+## 否则射程 buff 一放，reach 变大，导致阈值跟着漂移、自我放大。
+func _base_reach() -> float:
+	if not dynamic_attack_range:
+		return attack_range
+	var mine: CharacterData = character.character_data
+	if mine == null:
+		return attack_range
+	var hurt: float = mine.hurtbox_radius
+	var theirs: Variant = target.get("character_data")
+	if theirs != null:
+		var data := theirs as CharacterData
+		if data != null:
+			hurt = data.hurtbox_radius
+	return mine.hitbox_radius + hurt - 3.0
+
+
 func _attack_reach() -> float:
 	if not dynamic_attack_range:
 		return attack_range
@@ -371,9 +389,8 @@ func _is_walkable(cell: Vector2i) -> bool:
 
 # ---------- 技能 ----------
 
-## 只要范围内有敌人就放第一个能放的技能。
-## 半径直接读技能的 radius 导出属性，BuffSkill 没有这个属性 -> 视为"无半径"技能，
-## 只有正在交战时才放，避免开局就浪费 CD。
+## 遍历技能槽，放掉第一个「现在该放」的技能。
+## 返回 true 表示这一帧已经施法，调用方应跳过其余动作（技能与平砍互斥）。
 func _try_cast_skill() -> bool:
 	# 普攻正在出刀时会挡住施法，这一帧先不管技能
 	if character.is_attacking and not character.can_cancel_attack:
@@ -393,20 +410,116 @@ func _try_cast_skill() -> bool:
 	return false
 
 
-## 判断某个技能现在该不该放
+## 技能分类：决定「什么时候该放」，而不是「能不能放」。
+## 分类依据是技能实际作用的空间形状——这决定了它的最佳使用时机：
+##   * SELF_BUFF   自我强化：无作用范围，价值在「接下来一段时间」
+##   * AREA        自身周围的即时范围（AOE / 吸血 / 减速力场）
+##   * GROUND      固定位置的持续区域（枯荣领域）
+##   * PROJECTILE  朝一个方向打出的远程（乱向弹）
+## 靠导出属性的组合推断，不硬编码 class 名，新增同类技能不用改这里。
+enum SkillKind { SELF_BUFF, AREA, GROUND, PROJECTILE }
+
+
+func _skill_kind(skill: SkillData) -> int:
+	# 有 max_range 的是投射物（乱向弹 600px）
+	var max_range: Variant = skill.get("max_range")
+	if max_range != null and float(max_range) > 0.0:
+		return SkillKind.PROJECTILE
+	# 有 field_node_name 的是落地后固定不动的区域（枯荣领域）
+	if skill.get("field_node_name") != null:
+		return SkillKind.GROUND
+	# 有半径的是以自身为中心的范围技能
+	var radius: Variant = skill.get("radius")
+	if radius != null and float(radius) > 0.0:
+		return SkillKind.AREA
+	# 剩下的都是自我强化
+	return SkillKind.SELF_BUFF
+
+
+## 判断某个技能现在该不该放。
+## 原则：只跳过「放了也不会更好」的情况，不做精细收益计算。
 func _should_cast(skill: SkillData, _slot: int) -> bool:
-	var radius_value: Variant = skill.get("radius")
+	if not is_instance_valid(target):
+		return false
 
-	# 无半径技能（自我强化类）：只在已经接敌时放
-	if radius_value == null:
-		return _is_engaged()
+	var dist: float = character.global_position.distance_to(target.global_position)
 
-	var radius: float = float(radius_value)
-	if radius <= 0.0:
-		return _is_engaged()
+	match _skill_kind(skill):
+		SkillKind.SELF_BUFF:
+			return _should_cast_buff(skill, dist)
 
-	# 有半径技能：范围内敌人数量达到阈值就放
-	return _count_enemies_in_radius(radius) >= min_skill_targets
+		SkillKind.AREA:
+			var radius: float = float(skill.get("radius"))
+			# 范围技能要「够得着」才放：以前只判范围内人数，
+			# 导致 AI 离敌人 500px 就把 190px 半径的「太阳」放掉（纯浪费）。
+			if dist > radius:
+				return false
+			return _count_enemies_in_radius(radius) >= min_skill_targets
+
+		SkillKind.GROUND:
+			var radius2: float = float(skill.get("radius"))
+			# 固定区域：只在目标差不多踩在圈里时才放，否则领域白放
+			return dist <= radius2 * 1.5
+
+		SkillKind.PROJECTILE:
+			var reach: float = float(skill.get("max_range"))
+			# 投射物：在射程内、且不在贴脸距离（贴脸用普攻更划算）
+			return dist <= reach and dist > _attack_reach()
+
+	return false
+
+
+## 自我强化类：按「强化的是哪一项属性」决定时机。
+## 这是修正「战意/壮骨无脑放」的关键——不同属性的价值窗口完全不同。
+func _should_cast_buff(skill: SkillData, dist: float) -> bool:
+	# 已经挂着同来源的强化就别重复放：重复只刷新时长，白白浪费 CD
+	if character.has_method("has_modifier"):
+		var key := _buff_modifier_key(skill)
+		if key != &"" and character.has_modifier(key):
+			return false
+
+	var reach: float = _attack_reach()
+
+	# BuffSkill 的 stat 枚举：0=移速 1=攻力 2=射程 3=血上限
+	var stat: Variant = skill.get("stat")
+	if stat == null:
+		return dist <= reach * 3.0
+
+	match int(stat):
+		3:
+			# 生命上限：残血时才放。满血放等于浪费——上限抬高只补差额，
+			# 而且 AI 的 CD 很宝贵。
+			var max_hp: float = float(maxi(1, character.get_max_hp()))
+			return float(character.current_hp) / max_hp < 0.75
+		1:
+			# 攻击力：必须真的接上敌才放。实测用 reach*2 时，
+			# 双方还在 70px 外就把 CD 烧掉了，buff 的有效期全浪费在赶路上。
+			return dist <= reach
+		2:
+			# 攻击距离：在「即将接敌但还没接上」时放收益最大——
+			# 提前拉开手长，能在对方进普攻范围前先打到位。
+			# 但因为攻击距离会实时抬高 reach，这里用基础半径算，避免自我放大。
+			var base_reach: float = _base_reach()
+			# 5 秒的 buff，要在「再跑 1 秒就接敌」时放才划算。
+			# 2.5 倍会让开局 70px 就放掉，跑到身边时已经耗掉一半。
+			return dist <= base_reach * 1.8 and dist > base_reach
+		_:
+			# 移速：追击/撤退都有用，但开局就放纯属浪费——
+			# 追路上那几秒本来就在跑，加速效果会被"没接到敌"这半年抵消掉。
+			# 只在已经贴身缠斗、需要拉开或缠住时才放。
+			return dist <= reach * 1.2
+
+
+## 从 BuffSkill 的 stat 推断它修改的属性键，用于查重
+func _buff_modifier_key(skill: SkillData) -> StringName:
+	var stat: Variant = skill.get("stat")
+	if stat == null:
+		return &""
+	match int(stat):
+		1: return SkillData.MOD_ATTACK_POWER
+		2: return SkillData.MOD_ATTACK_RANGE
+		3: return SkillData.MOD_MAX_HP
+		_: return SkillData.MOD_MOVE_SPEED
 
 
 func _is_engaged() -> bool:
